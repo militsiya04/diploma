@@ -169,22 +169,8 @@ def init_database():
     try:
         conn = get_db_connection()
         create_tables(conn)
-        create_admin_user(conn)
         conn.close()
         print("[INFO] Базу даних створено і таблиці додано.")
     except Exception as e:
         print("[ERROR] Створено файл, але не вдалося створити таблиці.")
         print(e)
-
-
-def create_admin_user(conn):
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        INSERT INTO users (login, password, position)
-        VALUES (?, ?, ?)
-    """,
-        ("admin", "admin123", "admin"),
-    )
-    conn.commit()
-    print("[INFO] Користувач 'admin' створений.")

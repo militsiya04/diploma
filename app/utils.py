@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import os
+import secrets
 import time
 from functools import wraps
 
@@ -52,3 +53,22 @@ def login_required_with_timeout(timeout_minutes=15):
         return wrapped
 
     return decorator
+
+
+def hash_password(password: str) -> str:
+    salt = secrets.token_hex(16)
+    hashed = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100000)
+    return f"{salt}${hashed.hex()}"
+
+
+def check_password(password: str, hashed_password: str) -> bool:
+    try:
+        salt, hashed = hashed_password.split("$")
+        new_hash = hashlib.pbkdf2_hmac(
+            "sha256", password.encode(), salt.encode(), 100000
+        ).hex()
+        return hmac.compare_digest(new_hash, hashed)
+    except Exception:
+        return False
+
+

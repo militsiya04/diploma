@@ -10,7 +10,6 @@ from io import BytesIO
 import cv2
 import numpy as np
 import pandas as pd
-import pyodbc
 from deepface import DeepFace
 from docx import Document
 from flask import (
@@ -28,6 +27,9 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
+from werkzeug.utils import secure_filename
+
+from services.admin_setup import check_and_generate_admin_link
 from services.captcha_generator import generate_captcha_image, generate_captcha_text
 from services.document_reader import extract_text_from_docx, extract_text_from_pdf
 from services.email_otp_service import configure_mail, send_otp_email
@@ -36,10 +38,10 @@ from services.send_sms import send_sms
 from utils import (
     allowed_file,
     generate_session_token,
+    hash_password,
     is_fully_authenticated,
-    login_required_with_timeout,
+    login_required_with_timeout, check_password,
 )
-from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = "d9f9a8b7e5a4422aa1c8cf59d6d22e80"
@@ -50,6 +52,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 configure_mail(app)
 init_database()
+check_and_generate_admin_link(get_db_connection())
 
 
 # ----- AUTHENTICATION CYCLE START -----
@@ -61,7 +64,7 @@ def captcha():
     return send_file(img_io, mimetype="image/png")
 
 
-@app.route("/register", methods=["GET", "POST"])
+@app.route("/register", methods=["GET", "POST"])  # DEPRECATED
 def register():
     if (
         "user_id" in session
@@ -128,6 +131,85 @@ def register():
     return render_template("register.html")
 
 
+@app.route("/admin-register/<token>", methods=["GET", "POST"])
+def admin_register(token):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT token, expiry, used FROM admin_token WHERE token = ?
+    """,
+        (token,),
+    )
+    token_data = cursor.fetchone()
+
+    if not token_data:
+        return "⛔ Посилання недійсне або не існує.", 403
+    if token_data[2]:
+        return "⛔ Це посилання вже використано.", 403
+    if datetime.now() > token_data[1]:
+        return "⛔ Посилання протерміноване.", 403
+
+    cursor.execute("SELECT id FROM users WHERE position = 'admin'")
+    existing_admin = cursor.fetchone()
+    if existing_admin:
+        conn.close()
+        return (
+            "⚠️ Адміністратор уже існує в системі. Повторна реєстрація неможлива.",
+            403,
+        )
+
+    if request.method == "POST":
+        login = request.form["login"]
+        password = request.form["password"]
+        email = request.form["email"]
+        phone = request.form["phone"]
+        first_name = request.form["first_name"]
+        surname = request.form["surname"]
+        user_captcha = request.form["captcha"].strip().lower()
+        session_captcha = session.get("captcha", "").strip().lower()
+
+        if user_captcha != session_captcha:
+            flash("Ошибка: Неверная капча!", "error")
+            return redirect(request.url)
+
+        session.pop("captcha", None)
+
+        cursor.execute(
+            """
+            SELECT * FROM users 
+            WHERE login = ? OR email = ? OR phone = ?
+        """,
+            (login, email, phone),
+        )
+        if cursor.fetchone():
+            conn.close()
+            flash(
+                "Пользователь с таким логином, email или телефоном уже существует!",
+                "error",
+            )
+            return redirect(request.url)
+
+        position = "admin"
+        hashed_password = hash_password(password)
+        cursor.execute(
+            """
+            INSERT INTO users (position, login, password, email, phone, first_name, surname)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+            (position, login, hashed_password, email, phone, first_name, surname),
+        )
+        cursor.execute("UPDATE admin_token SET used = 1 WHERE token = ?", (token,))
+        conn.commit()
+        conn.close()
+
+        flash("✅ Адміністратор успішно створений!", "success")
+        return redirect(url_for("login"))
+
+    return render_template("admin_register.html", token=token)
+
+
 @app.route("/", methods=["GET", "POST"])
 def login():
     if is_fully_authenticated():
@@ -149,13 +231,13 @@ def login():
         cursor = conn.cursor()
 
         cursor.execute(
-            "SELECT id, position, first_name, email, phone FROM users WHERE login=? AND password=?",
-            (login, password),
+            "SELECT id, position, first_name, email, phone, password FROM users WHERE login=?",
+            (login,)
         )
         user = cursor.fetchone()
         conn.close()
 
-        if user:
+        if user and check_password(password, user[5]):
             session["user_id"] = user[0]
             session["user_position"] = user[1]
             session["user_name"] = user[2]
@@ -461,7 +543,7 @@ def dashboard():
         flash("User not found.", "error")
         return redirect(url_for("login"))
 
-    if position[0] == "Врач":
+    if position[0] in ["Врач", "admin"]:
         conn.close()
         flash("Doctors should use the medical dashboard.", "error")
         return redirect(url_for("meddashboard"))
@@ -782,7 +864,7 @@ def meddashboard():
     cursor.execute("SELECT position FROM users WHERE id = ?", (session["user_id"],))
     position = cursor.fetchone()
 
-    if not position or position[0] != "Врач":
+    if not position or position[0] not in ["Врач", "admin"]:
         conn.close()
         flash("Access denied.", "error")
         return redirect(url_for("dashboard"))
