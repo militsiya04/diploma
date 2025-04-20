@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Реєстрація</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: url('/static/img/hospital.png') no-repeat center center fixed;
+      background-size: cover;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .form-wrapper {
+      width: 320px;
+      max-width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      background-color: rgba(255, 255, 255, 0.95);
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    form {
+      width: 100%;
+      text-align: center;
+    }
+
+    h2 {
+      font-weight: bold;
+      font-size: 22px;
+      color: #003A3A;
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin: 10px 0 5px;
+      font-size: 14px;
+      color: #333;
+      text-align: left;
+    }
+
+    input[type="text"],
+    input[type="password"],
+    input[type="email"],
+    input[type="file"],
+    textarea {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    button, .back-btn {
+      background-color: #005C5C;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      margin-top: 10px;
+    }
+
+    button:hover, .back-btn:hover {
+      background-color: #007D7D;
+    }
+
+    .back-btn {
+      display: inline-block;
+      text-decoration: none;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="form-wrapper">
+    <form action="{{ url_for('register') }}" method="POST" enctype="multipart/form-data">
+
+      <h2>Реєстрація користувача</h2>
+
+      <label for="login">Логін:</label>
+      <input type="text" id="login" name="login" required>
+
+      <label for="password">Пароль:</label>
+      <input type="password" id="password" name="password" required>
+
+      <label for="email">Email:</label>
+      <input type="email" id="email" name="email" required>
+
+      <label for="phone">Телефон:</label>
+      <input type="text" id="phone" name="phone" required>
+
+      <label for="first_name">Ім'я:</label>
+      <input type="text" id="first_name" name="first_name" required>
+
+      <label for="surname">Прізвище:</label>
+      <input type="text" id="surname" name="surname" required>
+
+      <label for="photo">Фото:</label>
+      <input type="file" id="photo" name="photo" accept="image/*">
+
+      <label for="info">Додаткова інформація:</label>
+      <textarea id="info" name="info"></textarea>
+
+      <img src="{{ url_for('captcha') }}" alt="Капча"><br><br>
+      <input type="text" id="captcha" name="captcha" required><br><br>
+
+      <button type="submit">Зареєструватися</button><br>
+
+      <a href="{{ url_for('login') }}" class="back-btn">Повернутися до входу</a>
+    </form>
+  </div>
+</body>
+</html>

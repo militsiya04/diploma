@@ -1,0 +1,331 @@
+<head>
+    <meta charset="UTF-8">
+    <title>Редагована таблиця</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/formula/2.0.2/formula.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: #f6f8f8;
+            color: #003a3a;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h2 {
+            text-align: center;
+            color: #004b4b;
+        }
+
+        table {
+            width: 90%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 30px auto;
+            background-color: white;
+            border-radius: 14px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        th, td {
+            min-width: 120px;
+            height: 50px;
+            padding: 10px;
+            border-bottom: 1px solid #e0e0e0;
+            text-align: left;
+            vertical-align: middle;
+            position: relative;
+        }
+
+        th {
+            background-color: #f0f4f4;
+            text-align: center;
+            font-weight: bold;
+            color: #004b4b;
+            border-bottom: 2px solid #c2d1d1;
+        }
+
+        td {
+            background-color: #ffffff;
+        }
+
+        td:focus {
+            outline: none;
+            background-color: #eefcfc;
+        }
+
+        input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            font-family: inherit;
+        }
+
+        button {
+            margin: 8px;
+            padding: 10px 18px;
+            background-color: #0097a7;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover {
+            background-color: #007b8a;
+            transform: translateY(-1px);
+        }
+
+        .delete-row, .delete-column {
+            background-color: #e53935;
+            color: white;
+            padding: 2px 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            border-radius: 6px;
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+            transition: background-color 0.3s ease;
+        }
+
+        .delete-row:hover, .delete-column:hover {
+            background-color: #c62828;
+        }
+
+        a {
+            background-color: #f44336;
+            padding: 10px 18px;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            display: inline-block;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+
+        a:hover {
+            background-color: #d32f2f;
+        }
+
+        div[style*="text-align: center"] {
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <h2 style="text-align: center;">Редагована таблиця</h2>
+
+    <table id="editableTable">
+        <thead>
+            <tr>
+                <th></th>
+                {% for col in range(table_data[0]|length) %}
+                    <th>
+                        {{ loop.index }}
+                        <button class="delete-column" onclick="removeColumn({{ loop.index - 1 }})">×</button>
+                    </th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in table_data %}
+            <tr>
+                <th>
+                    {{ loop.index }}
+                    <button class="delete-row" onclick="removeRow({{ loop.index - 1 }})">×</button>
+                </th>
+                {% for cell in row %}
+                <td contenteditable="true" oninput="updateFormulas()">{{ cell }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div style="text-align: center;">
+        <button onclick="addRow()">Додати рядок</button>
+        <button onclick="addColumn()">Додати стовпець</button>
+        <br><br>
+        <button onclick="saveTable()" data-patient-id="{{ patient_id }}" data-filename="{{ filename }}">Зберегти</button>
+        <button onclick="downloadTable()" data-patient-id="{{ patient_id }}" data-filename="{{ filename }}">Завантажити таблицю</button>
+        <br><br>
+        <a href="{{ url_for('patient_dashboard', patient_id=patient_id) }}">Назад</a>
+    </div>
+
+    <script>
+        function addRow() {
+            let table = document.getElementById("editableTable").getElementsByTagName('tbody')[0];
+            let newRow = table.insertRow();
+            let rowIndex = table.rows.length;
+            let th = document.createElement("th");
+            th.innerHTML = rowIndex + ' <button class="delete-row" onclick="removeRow(' + (rowIndex - 1) + ')">×</button>';
+            newRow.appendChild(th);
+
+            let columnCount = table.rows[0].cells.length - 1;
+            for (let i = 0; i < columnCount; i++) {
+                let newCell = newRow.insertCell();
+                newCell.contentEditable = "true";
+                newCell.oninput = updateFormulas;
+            }
+        }
+
+        function addColumn() {
+            let table = document.getElementById("editableTable");
+            let headerRow = table.rows[0];
+            let columnIndex = headerRow.cells.length;
+            let th = document.createElement("th");
+            th.innerHTML = columnIndex + ' <button class="delete-column" onclick="removeColumn(' + (columnIndex - 1) + ')">×</button>';
+            headerRow.appendChild(th);
+
+            for (let i = 1; i < table.rows.length; i++) {
+                let newCell = table.rows[i].insertCell();
+                newCell.contentEditable = "true";
+                newCell.oninput = updateFormulas;
+            }
+        }
+
+        function removeRow(rowIndex) {
+            let table = document.getElementById("editableTable").getElementsByTagName('tbody')[0];
+            if (table.rows.length > 1) {
+                table.deleteRow(rowIndex);
+            } else {
+                alert("Неможливо видалити останній рядок!");
+            }
+        }
+
+        function removeColumn(colIndex) {
+            let table = document.getElementById("editableTable");
+            let headerRow = table.rows[0];
+            if (headerRow.cells.length > 2) {
+                for (let i = 0; i < table.rows.length; i++) {
+                    table.rows[i].deleteCell(colIndex + 1);
+                }
+            } else {
+                alert("Неможливо видалити останній стовпець!");
+            }
+        }
+
+        function updateFormulas() {
+            let table = document.getElementById("editableTable");
+            let data = [];
+            for (let i = 1; i < table.rows.length; i++) {
+                let row = [];
+                for (let j = 1; j < table.rows[i].cells.length; j++) {
+                    row.push(table.rows[i].cells[j].innerText.trim());
+                }
+                data.push(row);
+            }
+
+            for (let i = 1; i < table.rows.length; i++) {
+                for (let j = 1; j < table.rows[i].cells.length; j++) {
+                    let cell = table.rows[i].cells[j];
+                    let value = cell.innerText.trim();
+                    if (value.startsWith("=")) {
+                        try {
+                            let formula = value.substring(1);
+                            let result = evaluateFormula(formula, data);
+                            cell.innerText = result;
+                        } catch (e) {
+                            cell.innerText = "Помилка";
+                        }
+                    }
+                }
+            }
+        }
+
+        function evaluateFormula(expression, data) {
+            let transformedExpression = expression.replace(/([A-Z]+)(\d+)/g, function(_, col, row) {
+                let colIndex = col.charCodeAt(0) - "A".charCodeAt(0);
+                let rowIndex = parseInt(row, 10) - 1;
+                return (data[rowIndex] && data[rowIndex][colIndex]) ? data[rowIndex][colIndex] : "0";
+            });
+
+            try {
+                let result = new Function("with (Math) { return " + transformedExpression + "; }")();
+                return isNaN(result) ? "Помилка" : result;
+            } catch (e) {
+                return "Помилка";
+            }
+        }
+
+        function saveTable() {
+            const table = document.getElementById("editableTable");
+            const data = [];
+
+            for (let i = 1; i < table.rows.length; i++) {
+                let row = [];
+                for (let j = 1; j < table.rows[i].cells.length; j++) {
+                    row.push(table.rows[i].cells[j].innerText.trim());
+                }
+                data.push(row);
+            }
+
+            const button = document.querySelector('button[onclick="saveTable()"]');
+            const patientId = button.getAttribute("data-patient-id");
+            const filename = button.getAttribute("data-filename");
+
+            fetch(`/edit_excel/${patientId}/${filename}/save`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ table_data: data })
+            }).then(res => {
+                if (res.ok) {
+                    alert("Таблицю збережено!");
+                } else {
+                    alert("Помилка при збереженні таблиці.");
+                }
+            });
+        }
+
+        function downloadTable() {
+            const table = document.getElementById("editableTable");
+            const data = [];
+
+            for (let i = 1; i < table.rows.length; i++) {
+                let row = [];
+                for (let j = 1; j < table.rows[i].cells.length; j++) {
+                    row.push(table.rows[i].cells[j].innerText.trim());
+                }
+                data.push(row);
+            }
+
+            const button = document.querySelector('button[onclick="downloadTable()"]');
+            const patientId = button.getAttribute("data-patient-id");
+            const filename = button.getAttribute("data-filename");
+
+            fetch(`/edit_excel/${patientId}/${filename}/download`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ table_data: data })
+            })
+            .then(response => {
+                if (!response.ok) throw new Error("Помилка при завантаженні файлу.");
+                return response.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "edited_table.xlsx";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(error => {
+                alert("Помилка: " + error.message);
+            });
+        }
+    </script>
+</body>

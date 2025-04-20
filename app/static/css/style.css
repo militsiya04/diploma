@@ -1,0 +1,29 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+}
+
+h2 {
+    margin-top: 50px;
+}
+
+form {
+    margin-top: 10px;  /* Уменьшили отступ между формами */
+}
+
+button {
+    width: 250px;  /* Фиксированная ширина для всех кнопок */
+    padding: 10px 15px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+    margin: 5px 0;  /* Уменьшили вертикальный отступ между кнопками */
+}
+
+button:hover {
+    background-color: #45a049;
+}

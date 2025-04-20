@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: url('/static/img/hospital.png') no-repeat center center fixed;
+      background-size: cover;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    form {
+      background-color: rgba(255, 255, 255, 0.95);
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      width: 320px;
+      max-width: 90%;
+      text-align: center;
+    }
+
+    h2 {
+      font-weight: bold;
+      font-size: 22px;
+      color: #003A3A;
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin: 10px 0 5px;
+      font-size: 14px;
+      color: #333;
+      text-align: left;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+
+    input[type="submit"],
+    .register-btn {
+      background-color: #005C5C;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      margin-top: 10px;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    input[type="submit"]:hover,
+    .register-btn:hover {
+      background-color: #007D7D;
+    }
+
+    .flashes {
+      list-style: none;
+      padding: 0;
+      margin-top: 15px;
+    }
+
+    .flashes li {
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+
+    .flashes li.error {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+
+    .flashes li.success {
+      background-color: #d4edda;
+      color: #155724;
+    }
+
+    img[alt="Captcha"] {
+      margin-top: 10px;
+      max-width: 100%;
+      height: auto;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .logo {
+      position: absolute;
+      top: 20px;
+      left: 30px;
+      width: 150px;
+      height: auto;
+    }
+
+    .social-icons {
+      position: absolute;
+      bottom: 20px;
+      right: 30px;
+      display: flex;
+      gap: 15px;
+    }
+
+    .social-icons a {
+      width: 24px;
+      height: 24px;
+      display: block;
+      background-size: cover;
+    }
+  </style>
+</head>
+<body>
+  <form method="POST">
+    <label for="login">Login:</label>
+    <input type="text" id="login" name="login" required><br><br>
+
+    <label for="password">Password:</label>
+    <input type="password" id="password" name="password" required><br><br>
+
+    <label for="captcha">Enter Captcha:</label><br>
+    <img src="{{ url_for('captcha') }}" alt="Captcha"><br><br>
+    <input type="text" id="captcha" name="captcha" required><br><br>
+
+    <input type="submit" value="Login"><br><br>
+
+    <!-- Кнопка регистрации -->
+    <a href="{{ url_for('register') }}" class="register-btn">Регистрация</a>
+  </form>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <ul class="flashes">
+        {% for category, message in messages %}
+          <li class="{{ category }}">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+</body>
+</html>

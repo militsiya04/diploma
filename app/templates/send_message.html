@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Відправити повідомлення</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f9;
+            text-align: center;
+            padding: 20px;
+        }
+        h2 {
+            color: #6200ea;
+        }
+        form {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 50%;
+            margin: auto;
+        }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-top: 10px;
+        }
+        .search-container {
+            position: relative;
+            width: 100%;
+        }
+        input, textarea, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        button {
+            background: #6200ea;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #3700b3;
+        }
+        .container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        a {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #6200ea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        a:hover {
+            background: #3700b3;
+        }
+        .dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            max-height: 150px;
+            overflow-y: auto;
+            display: none;
+            z-index: 10;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .dropdown div {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        .dropdown div:hover {
+            background: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <h2>✉️ Відправити повідомлення</h2>
+    <form method="post">
+        <label for="search_user">🔎 Отримувач:</label>
+        <div class="search-container">
+            <input type="text" id="search_user" placeholder="Введіть ім'я або прізвище..." onkeyup="filterUsers()" onclick="showDropdown()" autocomplete="off">
+            <div class="dropdown" id="user_dropdown">
+                {% for user in users %}
+                    <div data-id="{{ user[0] }}" onclick="selectUser(this)">{{ user[1] }} {{ user[2] }}</div>
+                {% endfor %}
+            </div>
+        </div>
+        <input type="hidden" name="receiver_id" id="receiver_id" required>
+
+        <label for="message">Повідомлення:</label>
+        <textarea name="message" id="message" required></textarea>
+        <button type="submit">📨 Відправити</button>
+    </form>
+    
+    <div class="container">
+        <a href="{{ url_for('dashboard') }}">🔙 Повернутися до особистого кабінету</a>
+    </div>
+
+    <script>
+        function filterUsers() {
+            let search = document.getElementById("search_user").value.toLowerCase();
+            let dropdown = document.getElementById("user_dropdown");
+            let options = dropdown.getElementsByTagName("div");
+
+            dropdown.style.display = "block";
+
+            for (let i = 0; i < options.length; i++) {
+                let text = options[i].textContent.toLowerCase();
+                options[i].style.display = text.includes(search) ? "" : "none";
+            }
+        }
+
+        function showDropdown() {
+            document.getElementById("user_dropdown").style.display = "block";
+        }
+
+        function selectUser(element) {
+            document.getElementById("search_user").value = element.textContent;
+            document.getElementById("receiver_id").value = element.getAttribute("data-id");
+            document.getElementById("user_dropdown").style.display = "none";
+        }
+
+        document.addEventListener("click", function(event) {
+            let dropdown = document.getElementById("user_dropdown");
+            if (!event.target.closest(".search-container")) {
+                dropdown.style.display = "none";
+            }
+        });
+    </script>
+</body>
+</html>

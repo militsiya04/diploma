@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Підтвердження телефону</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: #e9eff1;
+            margin: 0;
+            padding: 60px 20px;
+            color: #002d2d;
+        }
+
+        .window {
+            max-width: 500px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 14px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+
+        .window-header {
+            height: 36px;
+            background-color: #f2f2f2;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+        }
+
+        .window-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .window-button {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .red { background-color: #ff5f57; }
+        .yellow { background-color: #ffbd2e; }
+        .green { background-color: #28c940; }
+
+        .content {
+            padding: 40px 30px 30px 30px;
+        }
+
+        h2 {
+            text-align: center;
+            font-size: 24px;
+            color: #003A3A;
+            margin-bottom: 30px;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        input[type="text"] {
+            padding: 12px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+        }
+
+        input[type="submit"] {
+            padding: 12px 18px;
+            background-color: #00a0aa;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s ease;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #008a94;
+        }
+
+        .flashes {
+            list-style-type: none;
+            padding: 0;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .flashes li {
+            margin-bottom: 10px;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        @media (max-width: 600px) {
+            .content {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="window">
+    <div class="window-header">
+        <div class="window-buttons">
+            <div class="window-button red"></div>
+            <div class="window-button yellow"></div>
+            <div class="window-button green"></div>
+        </div>
+    </div>
+    <div class="content">
+        <h2>Введіть код підтвердження</h2>
+        <form method="POST">
+            <div>
+                <label for="otp">Код OTP:</label>
+                <input type="text" id="otp" name="otp" required>
+            </div>
+            <input type="submit" value="Підтвердити">
+        </form>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <ul class="flashes">
+              {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
+    </div>
+</div>
+
+</body>
+</html>

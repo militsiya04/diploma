@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Кабінет лікаря</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: #e9eff1;
+            margin: 0;
+            padding: 60px 20px;
+            color: #002d2d;
+        }
+
+        .window {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 14px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .window-header {
+            height: 36px;
+            background-color: #f2f2f2;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+        }
+
+        .window-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .window-button {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .red { background-color: #ff5f57; }
+        .yellow { background-color: #ffbd2e; }
+        .green { background-color: #28c940; }
+
+        .content {
+            padding: 40px 30px 60px 30px;
+        }
+
+        h2 {
+            text-align: center;
+            font-size: 28px;
+            color: #003A3A;
+            margin-bottom: 40px;
+        }
+
+        .nav-links {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .nav-links a {
+            padding: 10px 20px;
+            background-color: #c7ecee;
+            color: #003A3A;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: bold;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+            transition: background 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            background-color: #b0e0e2;
+        }
+
+        .search-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        input[type="text"] {
+            padding: 12px;
+            width: 280px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            font-size: 15px;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+        }
+
+        button {
+            padding: 12px 18px;
+            background-color: #00a0aa;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #008a94;
+        }
+
+        table {
+            width: 95%;
+            max-width: 1100px;
+            margin: 0 auto;
+            border-collapse: collapse;
+            background-color: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        th, td {
+            padding: 16px 14px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #007070;
+            color: white;
+            user-select: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        th:hover {
+            background-color: #005a5a;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #f1fafa;
+        }
+
+        tbody tr:hover {
+            background-color: #e0f0f0;
+        }
+
+        td a {
+            color: #008c99;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .db-button {
+    padding: 10px 20px;
+    background-color: #c7ecee;
+    color: #003A3A;
+    border-radius: 12px;
+    text-decoration: none;
+    font-weight: bold;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    transition: background 0.3s ease;
+    display: inline-block;
+}
+
+.db-button:hover {
+    background-color: #b0e0e2;
+}
+
+        td a:hover {
+            text-decoration: underline;
+        }
+
+        .logout-link {
+            display: block;
+            text-align: center;
+            margin-top: 40px;
+            color: #006666;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .logout-link:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+    <script>
+        function filterPatients() {
+            let input = document.getElementById("search").value.toLowerCase();
+            let rows = document.querySelectorAll("tbody tr");
+
+            rows.forEach(row => {
+                let match = Array.from(row.cells).some(cell => cell.innerText.toLowerCase().includes(input));
+                row.style.display = match ? "" : "none";
+            });
+        }
+
+        function resetSearch() {
+            document.getElementById("search").value = "";
+            filterPatients();
+        }
+
+        function sortTable(n) {
+            let table = document.getElementById("patientsTable");
+            let rows = Array.from(table.rows).slice(1);
+            let asc = table.dataset.sortOrder !== "asc";
+
+            rows.sort((a, b) => {
+                let cellA = a.cells[n].innerText.trim().toLowerCase();
+                let cellB = b.cells[n].innerText.trim().toLowerCase();
+                return asc ? cellA.localeCompare(cellB) : cellB.localeCompare(cellA);
+            });
+
+            rows.forEach(row => table.appendChild(row));
+            table.dataset.sortOrder = asc ? "asc" : "desc";
+        }
+    </script>
+</head>
+<body>
+
+<div class="window">
+    <div class="window-header">
+        <div class="window-buttons">
+            <div class="window-button red"></div>
+            <div class="window-button yellow"></div>
+            <div class="window-button green"></div>
+        </div>
+    </div>
+    <div class="content">
+        <h2>👩‍⚕️ Кабінет лікаря</h2>
+
+        <div class="nav-links">
+            <a href="{{ url_for('inbox') }}">📩 Вхідні</a>
+            <a href="{{ url_for('outbox') }}">📤 Надіслані</a>
+            <a href="{{ url_for('send_message') }}">✉️ Нове повідомлення</a>
+        </div>
+        <div style="text-align: center; margin-top: 10px;">
+            <a href="{{ url_for('database') }}" class="db-button">🗂️ База даних</a>
+        </div>
+
+        <div class="search-container">
+            <input type="text" id="search" placeholder="Пошук за будь-яким полем...">
+            <button onclick="filterPatients()">🔍 Пошук</button>
+            <button onclick="resetSearch()">⛔ Очистити</button>
+        </div>
+
+        <table id="patientsTable" data-sort-order="asc">
+            <thead>
+                <tr>
+                    <th onclick="sortTable(0)">ID</th>
+                    <th onclick="sortTable(1)">Ім’я</th>
+                    <th onclick="sortTable(2)">Прізвище</th>
+                    <th onclick="sortTable(3)">Телефон</th>
+                    <th onclick="sortTable(4)">Пошта</th>
+                    <th>Деталі</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for patient in patients %}
+                <tr>
+                    <td>{{ patient[0] }}</td>
+                    <td>{{ patient[1] }}</td>
+                    <td>{{ patient[2] }}</td>
+                    <td>{{ patient[3] }}</td>
+                    <td>{{ patient[4] }}</td>
+                    <td><a href="{{ url_for('patient_dashboard', patient_id=patient[0]) }}">Відкрити</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <a href="{{ url_for('logout') }}" class="logout-link">⬅️ Вийти з системи</a>
+    </div>
+</div>
+
+</body>
+</html>

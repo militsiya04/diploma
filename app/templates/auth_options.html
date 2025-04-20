@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Варіанти автентифікації</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <h2>Оберіть спосіб автентифікації</h2>
+
+    <form method="POST" action="/authenticate-email">
+        <button type="submit">Автентифікація через Email</button>
+    </form>
+
+    <form method="POST" action="/authenticate-phone">
+        <button type="submit">Автентифікація через Телефон</button>
+    </form>
+
+    <form method="POST" action="/verify_face">
+        <button type="submit">Автентифікація через Обличчя</button>
+    </form>
+
+</body>
+</html>

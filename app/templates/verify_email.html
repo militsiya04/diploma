@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Підтвердження Email</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: #e9eff1;
+            margin: 0;
+            padding: 60px 20px;
+            color: #002d2d;
+        }
+
+        .window {
+            max-width: 500px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 14px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+
+        .window-header {
+            height: 36px;
+            background-color: #f2f2f2;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+        }
+
+        .window-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .window-button {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .red { background-color: #ff5f57; }
+        .yellow { background-color: #ffbd2e; }
+        .green { background-color: #28c940; }
+
+        .content {
+            padding: 40px 30px;
+        }
+
+        h2 {
+            text-align: center;
+            font-size: 24px;
+            color: #003A3A;
+            margin-bottom: 30px;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        label {
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        input[type="text"] {
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            font-size: 16px;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+        }
+
+        input[type="submit"] {
+            padding: 12px;
+            background-color: #00a0aa;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #008a94;
+        }
+
+        p {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        a {
+            color: #008c99;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .flashes {
+            margin-top: 20px;
+            list-style: none;
+            padding: 0;
+            color: #c0392b;
+            text-align: center;
+        }
+
+        .flashes li {
+            padding: 10px;
+            background-color: #fce4e4;
+            border: 1px solid #f5c2c2;
+            border-radius: 8px;
+            margin: 5px auto;
+            width: 80%;
+            max-width: 400px;
+        }
+
+        @media (max-width: 600px) {
+            .content {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="window">
+    <div class="window-header">
+        <div class="window-buttons">
+            <div class="window-button red"></div>
+            <div class="window-button yellow"></div>
+            <div class="window-button green"></div>
+        </div>
+    </div>
+    <div class="content">
+        <h2>📧 Введіть код підтвердження</h2>
+        <form method="POST">
+            <label for="otp">Код OTP:</label>
+            <input type="text" id="otp" name="otp" required>
+            <input type="submit" value="Підтвердити">
+        </form>
+
+        <p>Не отримали код? <a href="{{ url_for('authenticate_email') }}">Надіслати ще раз</a></p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <ul class="flashes">
+              {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
+    </div>
+</div>
+</body>
+</html>

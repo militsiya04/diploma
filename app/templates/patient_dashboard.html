@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Пацієнт | Інформація</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: #f6f8f8;
+            margin: 0;
+            padding: 0;
+            color: #003A3A;
+            text-align: center;
+        }
+
+        header {
+            background-color: #004B4B;
+            color: white;
+            padding: 25px 0;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 30px auto;
+            background-color: white;
+            border-radius: 14px;
+            padding: 30px;
+            box-shadow: 0 0 12px rgba(0,0,0,0.07);
+        }
+
+        h2, h3 {
+            color: #004B4B;
+            margin-top: 0;
+        }
+
+        .user-photo {
+            border-radius: 50%;
+            max-width: 200px;
+            display: block;
+            margin: 20px auto;
+            box-shadow: 0 0 8px rgba(0,0,0,0.15);
+        }
+
+        .placeholder-photo {
+            width: 200px;
+            height: 200px;
+            background: #e0f0f0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 50px;
+            color: #007777;
+            margin: 20px auto;
+            box-shadow: 0 0 8px rgba(0,0,0,0.1);
+        }
+
+        p {
+            font-size: 16px;
+        }
+
+        form {
+            margin: 20px 0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+            color: #004B4B;
+        }
+
+        input[type="file"] {
+            padding: 10px;
+            background: #f0fafa;
+            border: 1px solid #a3dcdc;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        button, a {
+            display: inline-block;
+            margin: 10px 6px;
+            padding: 10px 20px;
+            background-color: #0097a7;
+            color: white;
+            text-decoration: none;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+
+        button:hover, a:hover {
+            background-color: #007b8a;
+        }
+
+        ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        ul li {
+            margin: 6px 0;
+        }
+
+        ul li a {
+            color: #004B4B;
+            font-weight: bold;
+            text-decoration: underline;
+        }
+
+        #calendar {
+            max-width: 100%;
+            margin: 40px auto;
+            background: #f8fcfc;
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid #cce5e5;
+        }
+
+        .fc-toolbar-title {
+            font-size: 24px !important;
+        }
+
+        .fc-button {
+            font-size: 14px !important;
+            background-color: #007b8a !important;
+            border: none !important;
+            border-radius: 6px !important;
+        }
+
+        .fc-button:hover {
+            background-color: #005f66 !important;
+        }
+
+        .fc-event {
+            background-color: #006666 !important;
+            color: #fff !important;
+            border-radius: 10px !important;
+            font-size: 14px !important;
+            padding: 5px 8px;
+        }
+
+        .logout-link {
+            display: block;
+            margin-top: 30px;
+            color: #006666;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .logout-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Інформація про пацієнта</h1>
+    </header>
+
+    <div class="container">
+        <h2>{{ patient[0] }} {{ patient[1] }}</h2>
+
+        {% if patient[4] %}
+            <img src="{{ url_for('static', filename='photos/' + patient[4]) }}" alt="Фото пацієнта" class="user-photo">
+        {% else %}
+            <div class="placeholder-photo">👤</div>
+        {% endif %}
+
+        <p><b>Телефон:</b> {{ patient[2] }}</p>
+        <p><b>Інформація:</b> {{ patient[3] }}</p>
+
+        <form action="{{ url_for('upload_document') }}" method="POST" enctype="multipart/form-data">
+            <label for="file">Завантажити документ:</label>
+            <input type="file" name="file" id="file" accept=".pdf,.doc,.docx">
+            <button type="submit">Завантажити</button>
+        </form>
+
+        <form action="{{ url_for('upload_excel', patient_id=patient_id) }}" method="POST" enctype="multipart/form-data">
+            <label for="file">Завантажити Excel:</label>
+            <input type="file" name="file" id="file" accept=".xlsx">
+            <button type="submit">Завантажити</button>
+        </form>
+
+        <a href="{{ url_for('download_info', format='pdf') }}">📥 Завантажити PDF</a>
+        <a href="{{ url_for('download_info', format='docx') }}">📥 Завантажити DOCX</a>
+        <button onclick="createNewTable()">Створити нову таблицю</button>
+
+        <h3>Файли пацієнта</h3>
+        <ul>
+            {% if files %}
+                {% for file in files %}
+                    <li>
+                        <a href="{{ url_for('edit_excel', patient_id=patient_id, filename=file) }}">{{ file }}</a>
+                    </li>
+                {% endfor %}
+            {% else %}
+                <p>Файли не завантажено.</p>
+            {% endif %}
+        </ul>
+
+        <button onclick="runTkinter()">Запустити Tkinter</button>
+
+        <h3>Календар пацієнта</h3>
+        <div id="calendar"></div>
+
+        <a href="{{ url_for('meddashboard') }}">⬅️ Назад до списку</a>
+        <a href="{{ url_for('logout') }}" class="logout-link">Вийти з кабінету</a>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/uk.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const patientId = JSON.parse('{{ patient_id|tojson }}');
+            let calendarEl = document.getElementById('calendar');
+            let calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'uk',
+                firstDay: 1,
+                events: function(fetchInfo, successCallback, failureCallback) {
+                    $.get(`/calendar/${patientId}`, function(data) {
+                        successCallback(data);
+                    });
+                },
+                dateClick: function(info) {
+                    let title = prompt("Назва події:");
+                    if (!title) return;
+
+                    let description = prompt("Опис події:");
+                    let startTime = prompt("Час початку (наприклад, 14:00):");
+                    if (!startTime) return;
+
+                    let endTime = prompt("Час завершення (наприклад, 15:00):");
+                    let start = `${info.dateStr}T${startTime}`;
+                    let end = endTime ? `${info.dateStr}T${endTime}` : null;
+
+                    fetch(`/calendar/${patientId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ title, start, end, description })
+                    }).then(() => calendar.refetchEvents());
+                },
+                eventClick: function(info) {
+                    const msg = `📅 ${info.event.title}\n📝 ${info.event.extendedProps.description || 'Без опису'}`;
+                    alert(msg);
+                },
+                eventDidMount: function(info) {
+                    info.el.style.backgroundColor = '#006666';
+                    info.el.style.color = 'white';
+                    info.el.style.borderRadius = '10px';
+                    info.el.style.padding = '5px 8px';
+                    info.el.style.fontSize = '12px';
+                    info.el.style.textAlign = 'center';
+                }
+            });
+
+            calendar.render();
+        });
+
+        function runTkinter() {
+            fetch("{{ url_for('run_tkinter', patient_id=patient_id) }}", { method: "POST" })
+                .then(response => response.text())
+                .then(data => alert(data));
+        }
+
+        function createNewTable() {
+            let filename = prompt("Введіть назву нового файлу (наприклад, table.xlsx):");
+            if (!filename) return;
+            fetch("{{ url_for('create_new_excel', patient_id=patient_id) }}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ filename: filename })
+            }).then(() => window.location.reload());
+        }
+    </script>
+</body>
+</html>
