@@ -721,21 +721,6 @@ def send_message():
 @login_required_with_timeout()
 @roles_required("admin", "doctor")
 def upload_excel(patient_id):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT position FROM users WHERE id = ?", (session["user_id"],))
-        position = cursor.fetchone()
-    except Exception as e:
-        flash(f"Database error: {e}", "error")
-        return redirect(url_for("dashboard"))
-    finally:
-        conn.close()
-
-    if not position or position[0] != "Врач":
-        flash("Access denied.", "error")
-        return redirect(url_for("dashboard"))
-
     file = request.files.get("file")
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
