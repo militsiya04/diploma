@@ -879,15 +879,6 @@ def meddashboard():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Проверяем, является ли пользователь врачом
-    cursor.execute("SELECT position FROM users WHERE id = ?", (session["user_id"],))
-    position = cursor.fetchone()
-
-    if not position or position[0] not in ["Врач", "admin"]:
-        conn.close()
-        flash("Access denied.", "error")
-        return redirect(url_for("dashboard"))
-
     # Получаем параметры поиска и сортировки
     search_query = request.args.get("search", "").strip()
     sort_by = request.args.get("sort_by", "first_name")
