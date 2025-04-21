@@ -10,21 +10,21 @@ from flask import flash, redirect, session, url_for
 SECRET_KEY = os.getenv("SESSION_SECRET_KEY", "super-secret")
 
 
-def generate_session_token(user_id):
-    return hmac.new(
-        SECRET_KEY.encode(), str(user_id).encode(), hashlib.sha256
-    ).hexdigest()
-
-
-def verify_session_token(user_id, token):
-    expected = generate_session_token(user_id)
-    return hmac.compare_digest(expected, token)
+def generate_session_token(user_id, role):
+    message = f"{user_id}:{role}"
+    return hmac.new(SECRET_KEY.encode(), message.encode(), hashlib.sha256).hexdigest()
 
 
 def is_fully_authenticated():
     user_id = session.get("user_id")
+    role = session.get("role")
     token = session.get("session_token")
-    return user_id and token and verify_session_token(user_id, token)
+
+    if not all([user_id, role, token]):
+        return False
+
+    expected = generate_session_token(user_id, role)
+    return hmac.compare_digest(expected, token)
 
 
 def allowed_file(filename: str):
@@ -72,3 +72,21 @@ def check_password(password: str, hashed_password: str) -> bool:
         return False
 
 
+def roles_required(*allowed_roles):
+    def decorator(f):
+        @wraps(f)
+        def wrapped(*args, **kwargs):
+            if not is_fully_authenticated():
+                flash("Будь ласка, увійдіть в систему.", "error")
+                return redirect(url_for("login"))
+
+            role = session.get("role")
+            if role not in allowed_roles:
+                flash("Недостатньо прав для доступу.", "warning")
+                return redirect(url_for("unauthorized"))
+
+            return f(*args, **kwargs)
+
+        return wrapped
+
+    return decorator

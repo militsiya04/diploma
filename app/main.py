@@ -37,10 +37,12 @@ from services.init_database import get_db_connection, init_database
 from services.send_sms import send_sms
 from utils import (
     allowed_file,
+    check_password,
     generate_session_token,
     hash_password,
     is_fully_authenticated,
-    login_required_with_timeout, check_password,
+    login_required_with_timeout,
+    roles_required,
 )
 
 app = Flask(__name__)
@@ -232,7 +234,7 @@ def login():
 
         cursor.execute(
             "SELECT id, position, first_name, email, phone, password FROM users WHERE login=?",
-            (login,)
+            (login,),
         )
         user = cursor.fetchone()
         conn.close()
@@ -283,7 +285,9 @@ def verify_email():
         entered_otp = request.form["otp"]
         if "otp" in session and str(session["otp"]) == str(entered_otp):
             session.pop("otp", None)
-            session["session_token"] = generate_session_token(session["user_id"])
+            session["session_token"] = generate_session_token(
+                session["user_id"], session["user_position"]
+            )
             return redirect(url_for("redirect_user"))
         else:
             flash("Invalid OTP. Please try again.", "error")
@@ -309,7 +313,9 @@ def verify_phone():
 
         if entered_otp == actual_otp:
             flash("Phone authentication successful!", "success")
-            session["session_token"] = generate_session_token(session["user_id"])
+            session["session_token"] = generate_session_token(
+                session["user_id"], session["user_position"]
+            )
             return redirect(url_for("redirect_user"))
         else:
             flash("Invalid OTP. Try again.", "error")
@@ -370,7 +376,9 @@ def verify_face():
 
             if result["verified"]:
                 flash("✅ Биометрическая верификация прошла успешно!", "success")
-                session["session_token"] = generate_session_token(session["user_id"])
+                session["session_token"] = generate_session_token(
+                    session["user_id"], session["user_position"]
+                )
                 return redirect(url_for("redirect_user"))
             else:
                 flash("❌ Лицо не совпадает.", "error")
@@ -390,9 +398,9 @@ def redirect_user():
     if not is_fully_authenticated():
         return redirect(url_for("login"))
 
-    if session["user_position"] == "Пациент":
+    if session["user_position"] == "patient":
         return redirect(url_for("dashboard"))
-    elif session["user_position"] == "Врач":
+    elif session["user_position"] in ["doctor", "admin"]:
         return redirect(url_for("meddashboard"))
 
     flash("Ошибка: Неизвестная роль пользователя.", "error")
@@ -411,6 +419,7 @@ def logout():
 
 @app.route("/database", methods=["GET", "POST"])
 @login_required_with_timeout()
+@roles_required("admin", "doctor")
 def database():
     if request.method == "POST":
         file = request.files.get("excel_file")
@@ -499,6 +508,7 @@ def database():
 
 @app.route("/export_selected")
 @login_required_with_timeout()
+@roles_required("admin", "doctor")
 def export_selected():
     table_name = request.args.get("table")
     if table_name not in ["Pulse", "Dispersion", "WaS", "Pressure"]:
@@ -530,6 +540,7 @@ def export_selected():
 
 @app.route("/dashboard")
 @login_required_with_timeout()
+@roles_required("patient")
 def dashboard():
     user_id = session["user_id"]
 
@@ -542,11 +553,6 @@ def dashboard():
         conn.close()
         flash("User not found.", "error")
         return redirect(url_for("login"))
-
-    if position[0] in ["Врач", "admin"]:
-        conn.close()
-        flash("Doctors should use the medical dashboard.", "error")
-        return redirect(url_for("meddashboard"))
 
     cursor.execute(
         "SELECT first_name, surname, phone, info, photo FROM users WHERE id = ?",
@@ -563,6 +569,7 @@ def dashboard():
 
 @app.route("/download-info/<string:format>")
 @login_required_with_timeout()
+@roles_required("admin", "doctor")
 def download_info(format):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -630,6 +637,7 @@ def download_info(format):
 
 @app.route("/inbox")
 @login_required_with_timeout()
+@roles_required("admin", "doctor")
 def inbox():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -653,6 +661,7 @@ def inbox():
 
 @app.route("/outbox")
 @login_required_with_timeout()
+@roles_required("admin", "doctor")
 def outbox():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -676,6 +685,7 @@ def outbox():
 
 @app.route("/send_message", methods=["GET", "POST"])
 @login_required_with_timeout()
+@roles_required("admin", "doctor")
 def send_message():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -707,6 +717,7 @@ def send_message():
 # Загрузка Excel-файла
 @app.route("/upload-excel/<int:patient_id>", methods=["POST"])
 @login_required_with_timeout()
+@roles_required("admin", "doctor")
 def upload_excel(patient_id):
     try:
         conn = get_db_connection()
@@ -742,6 +753,7 @@ def upload_excel(patient_id):
 
 @app.route("/edit_excel/<int:patient_id>/<filename>")
 @login_required_with_timeout()
+@roles_required("admin", "doctor")
 def edit_excel(patient_id, filename):
     """
     Открывает страницу редактора и загружает данные из выбранного файла пациента.
@@ -768,6 +780,7 @@ def edit_excel(patient_id, filename):
 
 @app.route("/edit_excel/<int:patient_id>/<filename>/save", methods=["POST"])
 @login_required_with_timeout()
+@roles_required("admin", "doctor")
 def save_excel(patient_id, filename):
     data = request.get_json().get("table_data")
     if not data:
@@ -784,6 +797,7 @@ def save_excel(patient_id, filename):
 
 @app.route("/edit_excel/<int:patient_id>/<filename>/download", methods=["POST"])
 @login_required_with_timeout()
+@roles_required("admin", "doctor")
 def download_excel(patient_id, filename):
     data = request.get_json().get("table_data")
     if not data:
@@ -808,6 +822,7 @@ def download_excel(patient_id, filename):
 
 @app.route("/patients/<int:patient_id>/create_new_excel", methods=["POST"])
 @login_required_with_timeout()
+@roles_required("admin", "doctor")
 def create_new_excel(patient_id):
     """Создает новый пустой Excel-файл для пациента."""
     data = request.json
@@ -828,6 +843,7 @@ def create_new_excel(patient_id):
 
 @app.route("/calendar/<int:patient_id>", methods=["GET"])
 @login_required_with_timeout()
+@roles_required("admin", "doctor")
 def get_calendar(patient_id):
     """Получает список событий пациента из базы Access."""
     conn = get_db_connection()
@@ -856,6 +872,7 @@ def get_calendar(patient_id):
 
 @app.route("/meddashboard", methods=["GET"])
 @login_required_with_timeout()
+@roles_required("admin", "doctor")
 def meddashboard():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -905,21 +922,12 @@ def meddashboard():
 
 @app.route("/patient/<int:patient_id>")
 @login_required_with_timeout()
+@roles_required("admin", "doctor")
 def patient_dashboard(patient_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # Проверяем, является ли пользователь врачом
-        cursor.execute("SELECT position FROM users WHERE id = ?", (session["user_id"],))
-        position = cursor.fetchone()
-
-        if not position or position[0] != "Врач":
-            conn.close()
-            flash("Access denied.", "error")
-            return redirect(url_for("dashboard"))
-
-        # Загружаем данные пациента
         cursor.execute(
             "SELECT first_name, surname, phone, info, photo FROM users WHERE id = ?",
             (patient_id,),
@@ -949,6 +957,7 @@ def patient_dashboard(patient_id):
 
 @app.route("/upload-document", methods=["POST"])
 @login_required_with_timeout()
+@roles_required("admin", "doctor")
 def upload_document():
     file = request.files["file"]
     if file:
@@ -987,6 +996,7 @@ def upload_document():
 
 @app.route("/run-tkinter/<patient_id>", methods=["POST"])
 @login_required_with_timeout()
+@roles_required("admin", "doctor")
 def run_tkinter(patient_id):
     path = r"C:\Users\User\Documents\diploma\app\patientexcels"
     patient_folder = os.path.join(path, patient_id)
