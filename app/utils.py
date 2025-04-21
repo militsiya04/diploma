@@ -17,7 +17,7 @@ def generate_session_token(user_id, role):
 
 def is_fully_authenticated():
     user_id = session.get("user_id")
-    role = session.get("role")
+    role = session.get("user_position")
     token = session.get("session_token")
 
     if not all([user_id, role, token]):
@@ -80,10 +80,10 @@ def roles_required(*allowed_roles):
                 flash("Будь ласка, увійдіть в систему.", "error")
                 return redirect(url_for("login"))
 
-            role = session.get("role")
+            role = session.get("user_position")
             if role not in allowed_roles:
                 flash("Недостатньо прав для доступу.", "warning")
-                return redirect(url_for("unauthorized"))
+                return redirect(url_for("redirect_user"))
 
             return f(*args, **kwargs)
 
