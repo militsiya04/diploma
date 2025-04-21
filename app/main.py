@@ -103,13 +103,12 @@ def register():
         if existing_user:
             conn.close()
             flash(
-                "Ошибка: Пользователь с таким логином, email или телефоном уже существует!",
+                "Помилка: Користувач із таким логіном, email або телефоном вже існує!",
                 "error",
             )
             return redirect(url_for("register"))
-
-        # Жёстко задаём позицию "Пациент"
-        position = "Пациент"
+ 
+        position = "Паціент"
 
         cursor.execute(
             """
@@ -120,9 +119,7 @@ def register():
         )
 
         conn.commit()
-        conn.close()
-
-        flash("Регистрация прошла успешно!", "success")
+        conn.close() 
         return redirect(url_for("login"))
 
     return render_template("register.html")
@@ -140,7 +137,7 @@ def login():
         session_captcha = session.get("captcha", "").strip().lower()
 
         if user_captcha != session_captcha:
-            flash("Ошибка: Неверная капча!", "error")
+            flash("Помилка: Невірна капча!", "error")
             return redirect(url_for("login"))
 
         session.pop("captcha", None)
@@ -163,7 +160,7 @@ def login():
             session["user_phone"] = user[4]
             return redirect(url_for("auth_options"))
         else:
-            flash("Ошибка: Неверные данные!", "error")
+            flash("Помилка: Неправильні дані!", "error")
 
     return render_template("login.html")
 
@@ -204,7 +201,7 @@ def verify_email():
             session["session_token"] = generate_session_token(session["user_id"])
             return redirect(url_for("redirect_user"))
         else:
-            flash("Invalid OTP. Please try again.", "error")
+            flash("Недійсний OTP. Спробуйте ще раз.", "error")
 
     return render_template("verify_email.html")
 
@@ -225,28 +222,26 @@ def verify_phone():
         entered_otp = request.form["otp"]
         actual_otp = session.get("phone_otp")
 
-        if entered_otp == actual_otp:
-            flash("Phone authentication successful!", "success")
+        if entered_otp == actual_otp: 
             session["session_token"] = generate_session_token(session["user_id"])
             return redirect(url_for("redirect_user"))
         else:
-            flash("Invalid OTP. Try again.", "error")
-    else:
-        # Генерация и отправка кода по SMS
+            flash("Недійсний OTP. Спробуйте ще раз.", "error")
+    else: 
         generated_code = "{:06d}".format(random.randint(0, 999999))
         session["phone_otp"] = generated_code
 
         phone_number = session.get("user_phone")
         if phone_number:
-            message = f"Ваш код подтверждения: {generated_code}"
+            message = f"Ваш код підтвердження: {generated_code}"
             result = send_sms([phone_number], message)
 
             if "error" in result:
-                flash("Ошибка при отправке SMS: " + result["error"], "error")
+                flash("Помилка при надсиланні SMS: " + result["error"], "error")
             else:
-                flash("Код отправлен на ваш номер телефона.", "info")
+                flash("Код відправлено на номер телефону.", "info")
         else:
-            flash("Номер телефона не найден в сессии.", "error")
+            flash("Номер телефону не знайдено у сесії.", "error")
 
     return render_template("verify_phone.html")
 
@@ -256,12 +251,12 @@ def verify_face():
     if request.method == "POST":
         user_id = session.get("user_id")
         if not user_id:
-            flash("User ID not found in session", "error")
+            flash("Ідентифікатор користувача не знайдено в сеансі", "error")
             return redirect(url_for("login"))
 
         photo_data = request.form.get("photo")
         if not photo_data:
-            flash("Фото не получено", "error")
+            flash("Фото не отримано", "error")
             return redirect(url_for("verify_face"))
 
         img_str = re.search(r"base64,(.*)", photo_data).group(1)
@@ -274,7 +269,7 @@ def verify_face():
         cv2.imwrite(input_photo_path, frame)
 
         if not os.path.exists(reference_photo_path):
-            flash("Фото для сверки не найдено!", "error")
+            flash("Фото для звіряння не знайдено!", "error")
             os.remove(input_photo_path)
             return redirect(url_for("verify_face"))
 
@@ -287,15 +282,15 @@ def verify_face():
             os.remove(input_photo_path)
 
             if result["verified"]:
-                flash("✅ Биометрическая верификация прошла успешно!", "success")
+                flash("✅ Біометрична верифікація пройшла успішно!", "success")
                 session["session_token"] = generate_session_token(session["user_id"])
                 return redirect(url_for("redirect_user"))
             else:
-                flash("❌ Лицо не совпадает.", "error")
+                flash("❌ Обличчя не збігається.", "error")
                 return redirect(url_for("verify_face"))
 
         except Exception as e:
-            flash(f"Ошибка сравнения: {str(e)}", "error")
+            flash(f"Помилка порівняння: {str(e)}", "error")
             if os.path.exists(input_photo_path):
                 os.remove(input_photo_path)
             return redirect(url_for("verify_face"))
@@ -308,19 +303,19 @@ def redirect_user():
     if not is_fully_authenticated():
         return redirect(url_for("login"))
 
-    if session["user_position"] == "Пациент":
+    if session["user_position"] == "Паціент":
         return redirect(url_for("dashboard"))
-    elif session["user_position"] == "Врач":
+    elif session["user_position"] == "Лікар":
         return redirect(url_for("meddashboard"))
 
-    flash("Ошибка: Неизвестная роль пользователя.", "error")
+    flash("Помилка: Невідома роль користувача.", "error")
     return redirect(url_for("login"))
 
 
 @app.route("/logout")
 def logout():
     session.clear()
-    flash("You have been logged out.", "info")
+    flash("Ви вийшли з системи.", "info")
     return redirect(url_for("login"))
 
 
@@ -458,12 +453,17 @@ def dashboard():
 
     if not position:
         conn.close()
-        flash("User not found.", "error")
+        flash("Користувача не знайдено.", "error")
         return redirect(url_for("login"))
 
+<<<<<<< Updated upstream
     if position[0] == "Врач":
         conn.close()
         flash("Doctors should use the medical dashboard.", "error")
+=======
+    if position[0] in ["Врач", "admin"]:
+        conn.close() 
+>>>>>>> Stashed changes
         return redirect(url_for("meddashboard"))
 
     cursor.execute(
@@ -491,8 +491,7 @@ def download_info(format):
     user = cursor.fetchone()
     conn.close()
 
-    if not user:
-        flash("User information not found.", "error")
+    if not user: 
         return redirect(url_for("dashboard"))
 
     if format == "pdf":
@@ -503,13 +502,14 @@ def download_info(format):
         c = canvas.Canvas(pdf_file, pagesize=letter)
         c.setFont("FreeSans", 12)
 
-        c.drawString(100, 750, "Информация о пользователе")
-        c.drawString(100, 730, f"Имя: {user[0]}")
-        c.drawString(100, 710, f"Фамилия: {user[1]}")
+        c.drawString(100, 750, "Інформація про користувача")
+        c.drawString(100, 730, f"Ім'я: {user[0]}")
+        c.drawString(100, 710, f"Прізвище: {user[1]}")
         c.drawString(100, 690, f"Email: {user[2]}")
         c.drawString(100, 670, f"Телефон: {user[3]}")
-        c.drawString(100, 650, f"Должность: {user[4] or 'N/A'}")
-        c.drawString(100, 630, f"Информация: {user[5] or 'N/A'}")
+        c.drawString(100, 650, f"Посада: {user[4] or 'Н/Д'}")
+        c.drawString(100, 630, f"Додаткова інформація: {user[5] or 'Н/Д'}")
+
 
         c.save()
         pdf_file.seek(0)
@@ -523,13 +523,14 @@ def download_info(format):
 
     elif format == "docx":
         doc = Document()
-        doc.add_heading("Информация о пользователе", level=1)
-        doc.add_paragraph(f"Имя: {user[0]}")
-        doc.add_paragraph(f"Фамилия: {user[1]}")
+        doc.add_heading("Інформація про користувача", level=1)
+        doc.add_paragraph(f"Ім'я: {user[0]}")
+        doc.add_paragraph(f"Прізвище: {user[1]}")
         doc.add_paragraph(f"Email: {user[2]}")
         doc.add_paragraph(f"Телефон: {user[3]}")
-        doc.add_paragraph(f"Должность: {user[4] or 'N/A'}")
-        doc.add_paragraph(f"Информация: {user[5] or 'N/A'}")
+        doc.add_paragraph(f"Посада: {user[4] or 'Н/Д'}")
+        doc.add_paragraph(f"Додаткова інформація: {user[5] or 'Н/Д'}")
+
 
         doc_file = BytesIO()
         doc.save(doc_file)
@@ -540,9 +541,7 @@ def download_info(format):
             as_attachment=True,
             download_name="user_info.docx",
             mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        )
-
-    flash("Unsupported file format.", "error")
+        ) 
     return redirect(url_for("dashboard"))
 
 
@@ -621,8 +620,7 @@ def send_message():
     conn.close()
     return render_template("send_message.html", users=users)
 
-
-# Загрузка Excel-файла
+ 
 @app.route("/upload-excel/<int:patient_id>", methods=["POST"])
 @login_required_with_timeout()
 def upload_excel(patient_id):
@@ -632,13 +630,13 @@ def upload_excel(patient_id):
         cursor.execute("SELECT position FROM users WHERE id = ?", (session["user_id"],))
         position = cursor.fetchone()
     except Exception as e:
-        flash(f"Database error: {e}", "error")
+        flash(f"Помилка бази даних: {e}", "error")
         return redirect(url_for("dashboard"))
     finally:
         conn.close()
 
     if not position or position[0] != "Врач":
-        flash("Access denied.", "error")
+        flash("Доступ заборонено.", "error")
         return redirect(url_for("dashboard"))
 
     file = request.files.get("file")
@@ -649,11 +647,9 @@ def upload_excel(patient_id):
         os.makedirs(patient_folder, exist_ok=True)
 
         filepath = os.path.join(patient_folder, filename)
-        file.save(filepath)
-
-        flash("Excel file uploaded successfully.", "success")
+        file.save(filepath) 
     else:
-        flash("Invalid file format.", "error")
+        flash("Недійсний формат файлу.", "error")
 
     return redirect(url_for("patient_dashboard", patient_id=patient_id))
 
@@ -662,20 +658,20 @@ def upload_excel(patient_id):
 @login_required_with_timeout()
 def edit_excel(patient_id, filename):
     """
-    Открывает страницу редактора и загружает данные из выбранного файла пациента.
+    Открывает страницу редактора и загружает данные из выбранного файла Паціента.
     """
     patient_folder = os.path.join("patientexcels", str(patient_id))
     file_path = os.path.join(patient_folder, filename)
 
     if not os.path.exists(file_path):
-        flash("Файл не найден.", "error")
+        flash("Файл не знайдено.", "error")
         return redirect(url_for("patient_dashboard", patient_id=patient_id))
 
     try:
         df = pd.read_excel(file_path, engine="openpyxl", header=None)
         data = df.fillna("").values.tolist()
     except Exception as e:
-        flash(f"Ошибка загрузки файла: {str(e)}", "error")
+        flash(f"Помилка завантаження файлу: {str(e)}", "error")
         return redirect(url_for("patient_dashboard", patient_id=patient_id))
 
     # Теперь возвращаем шаблон с данными
@@ -727,7 +723,7 @@ def download_excel(patient_id, filename):
 @app.route("/patients/<int:patient_id>/create_new_excel", methods=["POST"])
 @login_required_with_timeout()
 def create_new_excel(patient_id):
-    """Создает новый пустой Excel-файл для пациента."""
+    """Создает новый пустой Excel-файл для Паціента."""
     data = request.json
     filename = data.get("filename", "new_table.xlsx")
 
@@ -746,8 +742,7 @@ def create_new_excel(patient_id):
 
 @app.route("/calendar/<int:patient_id>", methods=["GET"])
 @login_required_with_timeout()
-def get_calendar(patient_id):
-    """Получает список событий пациента из базы Access."""
+def get_calendar(patient_id): 
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -777,17 +772,15 @@ def get_calendar(patient_id):
 def meddashboard():
     conn = get_db_connection()
     cursor = conn.cursor()
-
-    # Проверяем, является ли пользователь врачом
+ 
     cursor.execute("SELECT position FROM users WHERE id = ?", (session["user_id"],))
     position = cursor.fetchone()
 
     if not position or position[0] != "Врач":
         conn.close()
-        flash("Access denied.", "error")
+        flash("Доступ заборонено.", "error")
         return redirect(url_for("dashboard"))
-
-    # Получаем параметры поиска и сортировки
+ 
     search_query = request.args.get("search", "").strip()
     sort_by = request.args.get("sort_by", "first_name")
     sort_order = request.args.get("sort_order", "ASC").upper()
@@ -799,7 +792,7 @@ def meddashboard():
     if sort_order not in ["ASC", "DESC"]:
         sort_order = "ASC"
 
-    query = "SELECT id, first_name, surname, phone, email FROM users WHERE position = 'Пациент'"
+    query = "SELECT id, first_name, surname, phone, email FROM users WHERE position = 'Паціент'"
     params = []
 
     if search_query:
@@ -827,17 +820,15 @@ def patient_dashboard(patient_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-
-        # Проверяем, является ли пользователь врачом
+ 
         cursor.execute("SELECT position FROM users WHERE id = ?", (session["user_id"],))
         position = cursor.fetchone()
 
         if not position or position[0] != "Врач":
             conn.close()
-            flash("Access denied.", "error")
+            flash("Доступ заборонено.", "error")
             return redirect(url_for("dashboard"))
-
-        # Загружаем данные пациента
+ 
         cursor.execute(
             "SELECT first_name, surname, phone, info, photo FROM users WHERE id = ?",
             (patient_id,),
@@ -846,10 +837,9 @@ def patient_dashboard(patient_id):
         conn.close()
 
         if not patient:
-            flash("Patient not found.", "error")
+            flash("Пацієнта не знайдено.", "error")
             return redirect(url_for("meddashboard"))
-
-        # Находим файлы пациента
+ 
         patient_folder = os.path.join("patientexcels", str(patient_id))
         files = os.listdir(patient_folder) if os.path.exists(patient_folder) else []
 
@@ -861,7 +851,7 @@ def patient_dashboard(patient_id):
         )
 
     except Exception as e:
-        flash(f"Database error: {e}", "error")
+        flash(f"Помилка бази даних: {e}", "error")
         return redirect(url_for("dashboard"))
 
 
@@ -880,7 +870,7 @@ def upload_document():
         elif filename.endswith(".docx"):
             text = extract_text_from_docx(filepath)
         else:
-            flash("Unsupported file format.", "error")
+            flash("Непідтримуваний формат файлу.", "error")
             return redirect(url_for("dashboard"))
 
         # Обновление информации о пользователе в MS Access
@@ -892,14 +882,12 @@ def upload_document():
             )
             conn.commit()
         except Exception as e:
-            flash(f"Database error: {str(e)}", "error")
+            flash(f"Помилка бази даних: {str(e)}", "error")
         finally:
             conn.close()
-
-        flash("Document uploaded and information updated successfully.", "success")
+ 
         return redirect(url_for("dashboard"))
-
-    flash("No file selected.", "error")
+ 
     return redirect(url_for("dashboard"))
 
 
@@ -910,9 +898,9 @@ def run_tkinter(patient_id):
     patient_folder = os.path.join(path, patient_id)
 
     if not os.path.exists(patient_folder):
-        return "Ошибка: папка пациента не найдена!", 400
+        return "Помилка: папка Паціента не найдена!", 400
 
-    # Запускаем Tkinter и передаём ID пациента как аргумент
+    # Запускаем Tkinter и передаём ID Паціента как аргумент
     subprocess.Popen(["python", "graph.py", str(patient_id)], start_new_session=True)
     return "График!", 200
 

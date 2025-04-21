@@ -74,23 +74,29 @@
     .flashes {
       list-style: none;
       padding: 0;
-      margin-top: 15px;
+      margin-top: 20px;
+      text-align: left;
     }
 
     .flashes li {
-      padding: 10px;
-      border-radius: 6px;
+      padding: 12px 16px;
+      border-radius: 8px;
       margin-bottom: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
 
     .flashes li.error {
-      background-color: #f8d7da;
-      color: #721c24;
+      background-color: #fdecea;
+      color: #c0392b;
+      border-left: 6px solid #e74c3c;
     }
 
     .flashes li.success {
-      background-color: #d4edda;
-      color: #155724;
+      background-color: #e9f9f1;
+      color: #2e7d32;
+      border-left: 6px solid #43a047;
     }
 
     img[alt="Captcha"] {
@@ -127,30 +133,31 @@
 </head>
 <body>
   <form method="POST">
+    <h2>Вхід в систему</h2>
+
     <label for="login">Login:</label>
-    <input type="text" id="login" name="login" required><br><br>
+    <input type="text" id="login" name="login" required>
 
     <label for="password">Password:</label>
-    <input type="password" id="password" name="password" required><br><br>
+    <input type="password" id="password" name="password" required>
 
-    <label for="captcha">Enter Captcha:</label><br>
-    <img src="{{ url_for('captcha') }}" alt="Captcha"><br><br>
-    <input type="text" id="captcha" name="captcha" required><br><br>
+    <label for="captcha">Enter Captcha:</label>
+    <img src="{{ url_for('captcha') }}" alt="Captcha">
+    <input type="text" id="captcha" name="captcha" required>
 
-    <input type="submit" value="Login"><br><br>
+    <input type="submit" value="Login">
 
-    <!-- Кнопка регистрации -->
     <a href="{{ url_for('register') }}" class="register-btn">Регистрация</a>
-  </form>
 
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      <ul class="flashes">
-        {% for category, message in messages %}
-          <li class="{{ category }}">{{ message }}</li>
-        {% endfor %}
-      </ul>
-    {% endif %}
-  {% endwith %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="flashes">
+          {% for category, message in messages %}
+            <li class="{{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+  </form>
 </body>
 </html>

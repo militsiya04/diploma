@@ -45,7 +45,7 @@
         }
 
         button {
-            margin: 20px 0;
+            margin: 20px 0 10px;
             padding: 12px 24px;
             background-color: #0097a7;
             color: white;
@@ -61,6 +61,33 @@
             background-color: #007b8a;
         }
 
+        .flashes {
+            list-style: none;
+            padding: 0;
+            margin-top: 15px;
+        }
+
+        .flashes li {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        .flashes li.error {
+            background-color: #fdecea;
+            color: #c0392b;
+            border-left: 6px solid #e74c3c;
+        }
+
+        .flashes li.success {
+            background-color: #e9f9f1;
+            color: #2e7d32;
+            border-left: 6px solid #43a047;
+        }
+
         footer {
             margin-top: 40px;
             font-size: 14px;
@@ -70,7 +97,7 @@
 </head>
 <body>
     <header>
-        <h1>Верифікація  </h1>
+        <h1>Верифікація</h1>
     </header>
 
     <div class="container">
@@ -81,11 +108,21 @@
         <form id="photoForm" method="POST" enctype="multipart/form-data">
             <input type="hidden" name="photo" id="photoInput">
             <button type="button" id="snap">📸 Зробити фото</button>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                <ul class="flashes">
+                  {% for category, message in messages %}
+                    <li class="{{ category }}">{{ message }}</li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+            {% endwith %}
         </form>
     </div>
 
     <footer>
-        &copy; {{ current_year or 2025 }} Верифікація  
+        &copy; {{ current_year or 2025 }} Верифікація
     </footer>
 
     <script>
