@@ -49,8 +49,10 @@ app = Flask(__name__)
 app.secret_key = "d9f9a8b7e5a4422aa1c8cf59d6d22e80"
 
 UPLOAD_FOLDER = "uploads"
+DATABASE_FOLDER = "database"
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(DATABASE_FOLDER, exist_ok=True)
 
 configure_mail(app)
 init_database()
