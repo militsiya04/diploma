@@ -16,14 +16,10 @@ class ExcelGraphApp:
         self.root.configure(bg="white")
         self.root.geometry("420x600")
 
-        self.patient_id = patient_id
-<<<<<<< Updated upstream
-        self.patient_folder = os.path.join("serverdatabase/excel_files/", str(patient_id))
-=======
+        self.patient_id = patient_id 
         self.patient_folder = os.path.join(
             "server_database/excel_files/", str(patient_id)
-        )
->>>>>>> Stashed changes
+        )  
         self.files = []
         self.data = {}
         self.graph_type = "Лінійний"
@@ -244,7 +240,7 @@ class ExcelGraphApp:
                 rf"DRIVER={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={db_path};"
             )
             df = pd.read_sql(
-                f"SELECT pulse FROM pulse WHERE id = {self.patient_id}", conn
+                f"SELECT pulse FROM pulse WHERE user_id = {self.patient_id}", conn
             )
             conn.close()
 
@@ -254,12 +250,9 @@ class ExcelGraphApp:
                 return
 
             average = pulses.mean()
-            msg = f"Середній пульс: {average:.2f} уд/хв"
-
-            if average < 60 or average > 100:
-                msg += "\n⚠ Значення виходить за межі норми (60–100 уд/хв)!"
-
-            messagebox.showinfo("Середній пульс", msg)
+            messagebox.showinfo(
+                "Середній пульс", f"Середній пульс: {average:.2f} уд/хв"
+            )
 
             if messagebox.askyesno(
                 "Графік пульсу", "Бажаєте переглянути графік пульсу?"
@@ -285,7 +278,7 @@ class ExcelGraphApp:
                 rf"DRIVER={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={db_path};"
             )
             df = pd.read_sql(
-                f"SELECT bpressure, apressure FROM Pressure WHERE id = {self.patient_id}",
+                f"SELECT bpressure, apressure FROM Pressure WHERE user_id = {self.patient_id}",
                 conn,
             )
             conn.close()
@@ -349,7 +342,7 @@ class ExcelGraphApp:
                 rf"DRIVER={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={db_path};"
             )
             df = pd.read_sql(
-                f"SELECT weight, sugar FROM WaS WHERE id = {self.patient_id}", conn
+                f"SELECT weight, sugar FROM WaS WHERE user_id = {self.patient_id}", conn
             )
             conn.close()
 
@@ -382,14 +375,10 @@ class ExcelGraphApp:
 
             avg_weight = df["weight"].mean()
             avg_sugar = df["parsed_sugar"].mean()
-            msg = f"Середня вага: {avg_weight:.2f} кг\nСередній рівень цукру: {avg_sugar:.2f} ммоль/л"
-
-            if avg_weight < 40 or avg_weight > 150:
-                msg += "\n⚠ Вага виходить за межі нормального діапазону (40–150 кг)!"
-            if avg_sugar < 3.9 or avg_sugar > 6.1:
-                msg += "\n⚠ Рівень цукру виходить за межі норми (3.9–6.1 ммоль/л)!"
-
-            messagebox.showinfo("Середні значення", msg)
+            messagebox.showinfo(
+                "Середні значення",
+                f"Середня вага: {avg_weight:.2f} кг\nСередній рівень цукру: {avg_sugar:.2f} ммоль/л",
+            )
 
             if messagebox.askyesno(
                 "Графік ваги", "Хочете побачити графік ваги та рівня цукру?"
@@ -423,7 +412,7 @@ class ExcelGraphApp:
                 rf"DRIVER={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={db_path};"
             )
             df = pd.read_sql(
-                f"SELECT bpressure, apressure FROM Pressure WHERE id = {self.patient_id}",
+                f"SELECT bpressure, apressure FROM Pressure WHERE user_id = {self.patient_id}",
                 conn,
             )
             conn.close()
@@ -439,14 +428,10 @@ class ExcelGraphApp:
 
             avg_before = before.mean()
             avg_after = after.mean()
-            msg = f"До лікування: {avg_before:.2f}\nПісля лікування: {avg_after:.2f}"
-
-            if avg_before < 90 or avg_before > 140:
-                msg += "\n⚠ Початковий тиск виходить за межі норми (90–140 мм рт.ст.)!"
-            if avg_after < 90 or avg_after > 140:
-                msg += "\n⚠ Тиск після лікування виходить за межі норми (90–140 мм рт.ст.)!"
-
-            messagebox.showinfo("Середні значення", msg)
+            messagebox.showinfo(
+                "Середні значення",
+                f"До лікування: {avg_before:.2f}\nПісля лікування: {avg_after:.2f}",
+            )
 
             if messagebox.askyesno(
                 "Графік ефекту", "Бажаєте переглянути графік до/після лікування?"

@@ -80,10 +80,10 @@ def create_tables(conn):
     cursor.execute(
         """
         CREATE TABLE pulse (
-            record_id COUNTER PRIMARY KEY,
-            id INTEGER,
+            id COUNTER PRIMARY KEY,
+            user_id INTEGER,
             pulse INTEGER,
-            data DATETIME
+            date_when_created DATETIME
         )
     """
     )
@@ -91,10 +91,10 @@ def create_tables(conn):
     cursor.execute(
         """
         CREATE TABLE dispersion (
-            record_id COUNTER PRIMARY KEY,
-            id INTEGER,
+            id COUNTER PRIMARY KEY,
+            user_id INTEGER,
             pulse INTEGER,
-            data DATETIME
+            date_when_created DATETIME
         )
     """
     )
@@ -102,10 +102,11 @@ def create_tables(conn):
     cursor.execute(
         """
         CREATE TABLE WaS (
-            record_id COUNTER PRIMARY KEY,
-            id INTEGER,
+            id COUNTER PRIMARY KEY,
+            user_id INTEGER,
             weight INTEGER,
-            sugar TEXT(100)
+            sugar TEXT(100),
+            date_when_created DATETIME
         )
     """
     )
@@ -113,10 +114,23 @@ def create_tables(conn):
     cursor.execute(
         """
         CREATE TABLE pressure (
-            record_id COUNTER PRIMARY KEY,
-            id INTEGER,
+            id COUNTER PRIMARY KEY,
+            user_id INTEGER,
             bpressure INTEGER,
-            apressure INTEGER
+            apressure INTEGER,
+            date_when_created DATETIME
+        )
+    """
+    )
+
+    cursor.execute(
+        """
+        CREATE TABLE otp_tokens (
+            user_id INT,
+            code TEXT,
+            type TEXT,
+            expiry DATETIME,
+            used YESNO
         )
     """
     )
@@ -141,6 +155,7 @@ def init_database():
         "dispersion",
         "WaS",
         "pressure",
+        "otp_tokens",
     ]
 
     if os.path.exists(DB_PATH):

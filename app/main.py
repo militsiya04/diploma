@@ -20,6 +20,7 @@ from flask import (
     render_template,
     request,
     send_file,
+    send_from_directory,
     session,
     url_for,
 )
@@ -38,6 +39,7 @@ from services.captcha_generator import generate_captcha_image, generate_captcha_
 from services.document_reader import extract_text_from_docx, extract_text_from_pdf
 from services.email_otp_service import configure_mail, send_otp_email
 from services.init_database import get_db_connection, init_database
+from services.otp_checking import store_otp, validate_otp
 from services.send_sms import send_sms
 from utils import (
     allowed_file,
@@ -54,9 +56,17 @@ app.secret_key = "d9f9a8b7e5a4422aa1c8cf59d6d22e80"
 
 UPLOAD_FOLDER = "uploads"
 DATABASE_FOLDER = "database"
+SERVER_DATABASE_FOLDER = "server_database"
+EXCEL_FOLDER = os.path.join(SERVER_DATABASE_FOLDER, "excel_files")
+VERIFICATION_PHOTOS_FOLDER = os.path.join(SERVER_DATABASE_FOLDER, "verification_photos")
+
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(DATABASE_FOLDER, exist_ok=True)
+os.makedirs(SERVER_DATABASE_FOLDER, exist_ok=True)
+os.makedirs(EXCEL_FOLDER, exist_ok=True)
+os.makedirs(VERIFICATION_PHOTOS_FOLDER, exist_ok=True)
 
 configure_mail(app)
 init_database()
@@ -149,7 +159,7 @@ def register_user(token: str):
         photo = request.files.get("photo")
         if photo and photo.filename.lower().endswith((".jpg", ".jpeg")):
             img = Image.open(photo)
-            save_path = f"serverdatabase/verification_photos/{user_id}.jpg"
+            save_path = f"server_database/verification_photos/{user_id}.jpg"
             os.makedirs(os.path.dirname(save_path), exist_ok=True)
             img.convert("RGB").save(save_path, "JPEG")
         else:
@@ -227,7 +237,18 @@ def authenticate_email():
         flash("No email found.", "error")
         return redirect(url_for("auth_options"))
 
-    send_otp_email(session["user_email"])
+    email = session["user_email"]
+    user_id = session["user_id"]
+    code = "{:06d}".format(random.randint(0, 999999))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    store_otp(cursor, user_id, code, "email")
+    conn.commit()
+    conn.close()
+
+    send_otp_email(email, code)
+
     return redirect(url_for("verify_email"))
 
 
@@ -238,17 +259,22 @@ def verify_email():
     if "user_id" not in session:
         return redirect(url_for("login"))
 
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
     if request.method == "POST":
         entered_otp = request.form["otp"]
-        if "otp" in session and str(session["otp"]) == str(entered_otp):
-            session.pop("otp", None)
+        if validate_otp(cursor, session["user_id"], entered_otp, "email"):
+            conn.commit()
+            conn.close()
             session["session_token"] = generate_session_token(
                 session["user_id"], session["user_position"]
             )
             return redirect(url_for("redirect_user"))
         else:
-            flash("Invalid OTP. Please try again.", "error")
+            flash("Invalid or expired OTP. Please try again.", "error")
 
+    conn.close()
     return render_template("verify_email.html")
 
 
@@ -264,35 +290,40 @@ def authenticate_phone():
 
 @app.route("/verify_phone", methods=["GET", "POST"])
 def verify_phone():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    user_id = session["user_id"]
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
     if request.method == "POST":
         entered_otp = request.form["otp"]
-        actual_otp = session.get("phone_otp")
-
-        if entered_otp == actual_otp:
-            flash("Phone authentication successful!", "success")
+        if validate_otp(cursor, user_id, entered_otp, "phone"):
+            conn.commit()
+            conn.close()
             session["session_token"] = generate_session_token(
-                session["user_id"], session["user_position"]
+                user_id, session["user_position"]
             )
+            flash("Phone authentication successful!", "success")
             return redirect(url_for("redirect_user"))
         else:
-            flash("Invalid OTP. Try again.", "error")
+            flash("Invalid or expired OTP.", "error")
     else:
-        # Генерация и отправка кода по SMS
-        generated_code = "{:06d}".format(random.randint(0, 999999))
-        session["phone_otp"] = generated_code
-
+        code = "{:06d}".format(random.randint(0, 999999))
+        store_otp(cursor, user_id, code, "phone")
         phone_number = session.get("user_phone")
         if phone_number:
-            message = f"Ваш код подтверждения: {generated_code}"
-            result = send_sms([phone_number], message)
-
+            result = send_sms([phone_number], f"Ваш код подтверждения: {code}")
             if "error" in result:
                 flash("Ошибка при отправке SMS: " + result["error"], "error")
             else:
                 flash("Код отправлен на ваш номер телефона.", "info")
         else:
             flash("Номер телефона не найден в сессии.", "error")
+        conn.commit()
 
+    conn.close()
     return render_template("verify_phone.html")
 
 
@@ -314,8 +345,8 @@ def verify_face():
         np_arr = np.frombuffer(img_bytes, np.uint8)
         frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-        input_photo_path = f"serverdatabase/verification_photos/temp_{user_id}.jpg"
-        reference_photo_path = f"serverdatabase/verification_photos/{user_id}.jpg"
+        input_photo_path = f"server_database/verification_photos/temp_{user_id}.jpg"
+        reference_photo_path = f"server_database/verification_photos/{user_id}.jpg"
         cv2.imwrite(input_photo_path, frame)
 
         if not os.path.exists(reference_photo_path):
@@ -444,90 +475,73 @@ def database():
                 cursor = conn.cursor()
 
                 if table_choice == "Pulse":
-                    required_columns = {"id", "pulse", "data"}
-                    if not required_columns.issubset(df.columns):
-<<<<<<< Updated upstream
-                        flash("❌ Pulse: потрібні стовпці: id, pulse, data", "error")
-=======
+                    required_columns = {"user_id", "pulse", "date_when_created"}
+                    if not required_columns.issubset(df.columns): 
                         flash(
                             "❌ Pulse: потрібні стовпці: user_id, pulse, date_when_created",
                             "error",
-                        )
->>>>>>> Stashed changes
+                        ) 
                         return redirect(url_for("database"))
 
                     cursor.execute("DELETE FROM pulse")
                     for _, row in df.iterrows():
                         cursor.execute(
-                            "INSERT INTO pulse (id, pulse, data) VALUES (?, ?, ?)",
-                            int(row["id"]),
+                            "INSERT INTO pulse (user_id, pulse, date_when_created) VALUES (?, ?, ?)",
+                            int(row["user_id"]),
                             int(row["pulse"]),
-                            str(row["data"]),
+                            str(row["date_when_created"]),
                         )
 
                 elif table_choice == "Dispersion":
-                    required_columns = {"id", "pulse", "data"}
+                    required_columns = {"user_id", "pulse", "date_when_created"}
                     if not required_columns.issubset(df.columns):
-                        flash(
-<<<<<<< Updated upstream
-                            "❌ Dispersion: потрібні стовпці: id, pulse, data", "error"
-=======
+                        flash( 
                             "❌ Dispersion: потрібні стовпці: user_id, pulse, date_when_created",
-                            "error",
->>>>>>> Stashed changes
+                            "error", 
                         )
                         return redirect(url_for("database"))
 
                     cursor.execute("DELETE FROM dispersion")
                     for _, row in df.iterrows():
                         cursor.execute(
-                            "INSERT INTO dispersion (id, pulse, data) VALUES (?, ?, ?)",
-                            int(row["id"]),
+                            "INSERT INTO dispersion (user_id, pulse, date_when_created) VALUES (?, ?, ?)",
+                            int(row["user_id"]),
                             int(row["pulse"]),
-                            str(row["data"]),
+                            str(row["date_when_created"]),
                         )
-                elif table_choice == "WaS":
-<<<<<<< Updated upstream
-                    required_columns = {"id", "weight", "sugar"}
-                    if not required_columns.issubset(df.columns):
-                        flash("❌ WaS: потрібні стовпці: id, weight, sugar", "error")
-=======
+                elif table_choice == "WaS":  
                     required_columns = {
                         "user_id",
                         "weight",
                         "sugar",
                         "date_when_created",
                     }
-                    if not required_columns.issubset(df.columns):
+                    if not required_columns.issubset(df.columns): 
                         flash(
                             "❌ WaS: потрібні стовпці: user_id, weight, sugar, date_when_created",
                             "error",
-                        )
->>>>>>> Stashed changes
+                        ) 
                         return redirect(url_for("database"))
 
                     cursor.execute("DELETE FROM WaS")
                     for _, row in df.iterrows():
                         cursor.execute(
-                            "INSERT INTO WaS (id, weight, sugar) VALUES (?, ?, ?)",
-                            int(row["id"]),
+                            "INSERT INTO WaS (user_id, weight, sugar, date_when_created) VALUES (?, ?, ?, ?)",
+                            int(row["user_id"]),
                             float(row["weight"]),
                             float(row["sugar"]),
+                            str(row["date_when_created"]),
                         )
-                elif table_choice == "Pressure":
-<<<<<<< Updated upstream
-                    required_columns = {"id", "bpressure", "apressure"}
-=======
+                elif table_choice == "Pressure": 
                     required_columns = {
                         "user_id",
                         "bpressure",
                         "apressure",
                         "date_when_created",
-                    }
->>>>>>> Stashed changes
+                    } 
                     if not required_columns.issubset(df.columns.str.lower()):
                         flash(
-                            "❌ Pressure: потрібні стовпці: id, bpressure, apressure",
+                            "❌ Pressure: потрібні стовпці: user_id, bpressure, apressure, date_when_created",
                             "error",
                         )
                         return redirect(url_for("database"))
@@ -535,10 +549,11 @@ def database():
                     cursor.execute("DELETE FROM pressure")
                     for _, row in df.iterrows():
                         cursor.execute(
-                            "INSERT INTO pressure (id, bpressure, apressure) VALUES (?, ?, ?)",
-                            int(row["id"]),
+                            "INSERT INTO pressure (user_id, bpressure, apressure, date_when_created) VALUES (?, ?, ?, ?)",
+                            int(row["user_id"]),
                             int(row["bpressure"]),
                             int(row["apressure"]),
+                            str(row["date_when_created"]),
                         )
 
                 conn.commit()
@@ -604,8 +619,8 @@ def dashboard():
         (user_id,),
     )
     user = cursor.fetchone()
-
-    patient_folder = os.path.join("serverdatabase/excel_files/", str(user_id))
+ 
+    patient_folder = os.path.join("server_database/excel_files/", str(user_id)) 
     files = os.listdir(patient_folder) if os.path.exists(patient_folder) else []
 
     conn.close()
@@ -767,8 +782,8 @@ def upload_excel(patient_id):
     file = request.files.get("file")
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-
-        patient_folder = os.path.join("serverdatabase/excel_files", str(patient_id))
+ 
+        patient_folder = os.path.join("server_database/excel_files", str(patient_id)) 
         os.makedirs(patient_folder, exist_ok=True)
 
         filepath = os.path.join(patient_folder, filename)
@@ -787,8 +802,8 @@ def upload_excel(patient_id):
 def edit_excel(patient_id, filename):
     """
     Открывает страницу редактора и загружает данные из выбранного файла пациента.
-    """
-    patient_folder = os.path.join("serverdatabase/excel_files", str(patient_id))
+    """ 
+    patient_folder = os.path.join("server_database/excel_files", str(patient_id)) 
     file_path = os.path.join(patient_folder, filename)
 
     if not os.path.exists(file_path):
@@ -816,14 +831,10 @@ def save_excel(patient_id, filename):
     if not data:
         return jsonify({"message": "Немає даних для збереження"}), 400
 
-    try:
-<<<<<<< Updated upstream
-        file_path = os.path.join("serverdatabase/excel_files", str(patient_id), filename)
-=======
+    try:  
         file_path = os.path.join(
             "server_database/excel_files", str(patient_id), filename
-        )
->>>>>>> Stashed changes
+        ) 
         df = pd.DataFrame(data)
         df.to_excel(file_path, index=False, header=False, engine="openpyxl")
         return jsonify({"message": "Таблицю збережено успішно."})
@@ -856,16 +867,9 @@ def download_excel(patient_id, filename):
         return f"Помилка при створенні файлу: {str(e)}", 500
 
 
-@app.route("/download_patient_excel/<int:patient_id>/<filename>")
-<<<<<<< Updated upstream
-def download_patient_excel(patient_id, filename): 
-    folder_path = os.path.join("serverdatabase", "excel_files", str(patient_id))
- 
-=======
+@app.route("/download_patient_excel/<int:patient_id>/<filename>") 
 def download_patient_excel(patient_id, filename):
-    folder_path = os.path.join("server_database", "excel_files", str(patient_id))
-
->>>>>>> Stashed changes
+    folder_path = os.path.join("server_database", "excel_files", str(patient_id)) 
     safe_filename = secure_filename(filename)
 
     return send_from_directory(folder_path, safe_filename, as_attachment=True)
@@ -878,8 +882,8 @@ def create_new_excel(patient_id):
     """Создает новый пустой Excel-файл для пациента."""
     data = request.json
     filename = data.get("filename", "new_table.xlsx")
-
-    patient_folder = os.path.join("serverdatabase/excel_files/", str(patient_id))
+ 
+    patient_folder = os.path.join("server_database/excel_files/", str(patient_id)) 
     os.makedirs(patient_folder, exist_ok=True)
 
     file_path = os.path.join(patient_folder, filename)
@@ -982,7 +986,7 @@ def patient_dashboard(patient_id):
             return redirect(url_for("meddashboard"))
 
         # Находим файлы пациента
-        patient_folder = os.path.join("serverdatabase/excel_files", str(patient_id))
+        patient_folder = os.path.join("server_database/excel_files", str(patient_id))
         files = os.listdir(patient_folder) if os.path.exists(patient_folder) else []
 
         return render_template(
@@ -1035,18 +1039,10 @@ def upload_document():
     flash("No file selected.", "error")
     return redirect(url_for("dashboard"))
 
-
-@app.route("/run-tkinter/<patient_id>", methods=["POST"])
-@login_required_with_timeout()
-<<<<<<< Updated upstream
-@roles_required("admin", "doctor")
-def run_tkinter(patient_id): 
-    patient_folder = os.path.join("serverdatabase/excel_files/", str(patient_id))
-=======
+ 
 @roles_required("admin", "doctor", "patient")
 def run_tkinter(patient_id):
-    patient_folder = os.path.join("server_database/excel_files/", str(patient_id))
->>>>>>> Stashed changes
+    patient_folder = os.path.join("server_database/excel_files/", str(patient_id)) 
 
     if not os.path.exists(patient_folder):
         return "Ошибка: папка пациента не найдена!", 400

@@ -15,11 +15,7 @@ def configure_mail(app: Flask) -> None:
     mail.init_app(app)
 
 
-def send_otp_email(email: str) -> None:
-    otp: int = random.randint(100000, 999999)
-    session["otp"] = otp
-    session["email"] = email
-
+def send_otp_email(email: str, otp: str) -> None:
     msg: Message = Message(
         subject="Your Authentication Code",
         sender="default@example.com",
