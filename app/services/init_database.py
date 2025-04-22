@@ -49,7 +49,7 @@ def create_tables(conn):
     cursor.execute(
         """
         CREATE TABLE users (
-            id COUNTER PRIMARY KEY, 
+            id COUNTER PRIMARY KEY,
             login TEXT(100),
             password TEXT(100),
             email TEXT(100),
@@ -67,7 +67,7 @@ def create_tables(conn):
     cursor.execute(
         """
         CREATE TABLE messages (
-            record_id COUNTER PRIMARY KEY, 
+            id COUNTER PRIMARY KEY,
             sender_id INTEGER,
             receiver_id INTEGER,
             message MEMO,
@@ -80,10 +80,10 @@ def create_tables(conn):
     cursor.execute(
         """
         CREATE TABLE pulse (
-            record_id COUNTER PRIMARY KEY,
-            id INTEGER,
+            id COUNTER PRIMARY KEY,
+            user_id INTEGER,
             pulse INTEGER,
-            data DATETIME
+            data_when_created DATETIME
         )
     """
     )
@@ -91,10 +91,10 @@ def create_tables(conn):
     cursor.execute(
         """
         CREATE TABLE dispersion (
-            record_id COUNTER PRIMARY KEY,
-            id INTEGER,
+            id COUNTER PRIMARY KEY,
+            user_id INTEGER,
             pulse INTEGER,
-            data DATETIME
+            data_when_created DATETIME
         )
     """
     )
@@ -102,10 +102,11 @@ def create_tables(conn):
     cursor.execute(
         """
         CREATE TABLE WaS (
-            record_id COUNTER PRIMARY KEY,
-            id INTEGER,
+            id COUNTER PRIMARY KEY,
+            user_id INTEGER,
             weight INTEGER,
-            sugar TEXT(100)
+            sugar TEXT(100),
+            data_when_created DATETIME
         )
     """
     )
@@ -113,10 +114,11 @@ def create_tables(conn):
     cursor.execute(
         """
         CREATE TABLE pressure (
-            record_id COUNTER PRIMARY KEY,
-            id INTEGER,
+            id COUNTER PRIMARY KEY,
+            user_id INTEGER,
             bpressure INTEGER,
-            apressure INTEGER
+            apressure INTEGER,
+            data_when_created DATETIME
         )
     """
     )

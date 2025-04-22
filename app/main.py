@@ -54,9 +54,17 @@ app.secret_key = "d9f9a8b7e5a4422aa1c8cf59d6d22e80"
 
 UPLOAD_FOLDER = "uploads"
 DATABASE_FOLDER = "database"
+SERVER_DATABASE_FOLDER = "server_database"
+EXCEL_FOLDER = os.path.join(SERVER_DATABASE_FOLDER, "excel_files")
+VERIFICATION_PHOTOS_FOLDER = os.path.join(SERVER_DATABASE_FOLDER, "verification_photos")
+
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(DATABASE_FOLDER, exist_ok=True)
+os.makedirs(SERVER_DATABASE_FOLDER, exist_ok=True)
+os.makedirs(EXCEL_FOLDER, exist_ok=True)
+os.makedirs(VERIFICATION_PHOTOS_FOLDER, exist_ok=True)
 
 configure_mail(app)
 init_database()
@@ -149,7 +157,7 @@ def register_user(token: str):
         photo = request.files.get("photo")
         if photo and photo.filename.lower().endswith((".jpg", ".jpeg")):
             img = Image.open(photo)
-            save_path = f"serverdatabase/verification_photos/{user_id}.jpg"
+            save_path = f"server_database/verification_photos/{user_id}.jpg"
             os.makedirs(os.path.dirname(save_path), exist_ok=True)
             img.convert("RGB").save(save_path, "JPEG")
         else:
@@ -314,8 +322,8 @@ def verify_face():
         np_arr = np.frombuffer(img_bytes, np.uint8)
         frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-        input_photo_path = f"serverdatabase/verification_photos/temp_{user_id}.jpg"
-        reference_photo_path = f"serverdatabase/verification_photos/{user_id}.jpg"
+        input_photo_path = f"server_database/verification_photos/temp_{user_id}.jpg"
+        reference_photo_path = f"server_database/verification_photos/{user_id}.jpg"
         cv2.imwrite(input_photo_path, frame)
 
         if not os.path.exists(reference_photo_path):
@@ -444,55 +452,56 @@ def database():
                 cursor = conn.cursor()
 
                 if table_choice == "Pulse":
-                    required_columns = {"id", "pulse", "data"}
+                    required_columns = {"user_id", "pulse", "data_when_created"}
                     if not required_columns.issubset(df.columns):
-                        flash("❌ Pulse: потрібні стовпці: id, pulse, data", "error")
+                        flash("❌ Pulse: потрібні стовпці: user_id, pulse, data_when_created", "error")
                         return redirect(url_for("database"))
 
                     cursor.execute("DELETE FROM pulse")
                     for _, row in df.iterrows():
                         cursor.execute(
-                            "INSERT INTO pulse (id, pulse, data) VALUES (?, ?, ?)",
-                            int(row["id"]),
+                            "INSERT INTO pulse (user_id, pulse, data_when_created) VALUES (?, ?, ?)",
+                            int(row["user_id"]),
                             int(row["pulse"]),
-                            str(row["data"]),
+                            str(row["data_when_created"]),
                         )
 
                 elif table_choice == "Dispersion":
-                    required_columns = {"id", "pulse", "data"}
+                    required_columns = {"user_id", "pulse", "data_when_created"}
                     if not required_columns.issubset(df.columns):
                         flash(
-                            "❌ Dispersion: потрібні стовпці: id, pulse, data", "error"
+                            "❌ Dispersion: потрібні стовпці: user_id, pulse, data_when_created", "error"
                         )
                         return redirect(url_for("database"))
 
                     cursor.execute("DELETE FROM dispersion")
                     for _, row in df.iterrows():
                         cursor.execute(
-                            "INSERT INTO dispersion (id, pulse, data) VALUES (?, ?, ?)",
-                            int(row["id"]),
+                            "INSERT INTO dispersion (user_id, pulse, data_when_created) VALUES (?, ?, ?)",
+                            int(row["user_id"]),
                             int(row["pulse"]),
-                            str(row["data"]),
+                            str(row["data_when_created"]),
                         )
                 elif table_choice == "WaS":
-                    required_columns = {"id", "weight", "sugar"}
+                    required_columns = {"user_id", "weight", "sugar", "data_when_created"}
                     if not required_columns.issubset(df.columns):
-                        flash("❌ WaS: потрібні стовпці: id, weight, sugar", "error")
+                        flash("❌ WaS: потрібні стовпці: user_id, weight, sugar, data_when_created", "error")
                         return redirect(url_for("database"))
 
                     cursor.execute("DELETE FROM WaS")
                     for _, row in df.iterrows():
                         cursor.execute(
-                            "INSERT INTO WaS (id, weight, sugar) VALUES (?, ?, ?)",
-                            int(row["id"]),
+                            "INSERT INTO WaS (user_id, weight, sugar, data_when_created) VALUES (?, ?, ?, ?)",
+                            int(row["user_id"]),
                             float(row["weight"]),
                             float(row["sugar"]),
+                            str(row["data_when_created"]),
                         )
                 elif table_choice == "Pressure":
-                    required_columns = {"id", "bpressure", "apressure"}
+                    required_columns = {"user_id", "bpressure", "apressure", "data_when_created"}
                     if not required_columns.issubset(df.columns.str.lower()):
                         flash(
-                            "❌ Pressure: потрібні стовпці: id, bpressure, apressure",
+                            "❌ Pressure: потрібні стовпці: user_id, bpressure, apressure, data_when_created",
                             "error",
                         )
                         return redirect(url_for("database"))
@@ -500,10 +509,11 @@ def database():
                     cursor.execute("DELETE FROM pressure")
                     for _, row in df.iterrows():
                         cursor.execute(
-                            "INSERT INTO pressure (id, bpressure, apressure) VALUES (?, ?, ?)",
-                            int(row["id"]),
+                            "INSERT INTO pressure (user_id, bpressure, apressure, data_when_created) VALUES (?, ?, ?, ?)",
+                            int(row["user_id"]),
                             int(row["bpressure"]),
                             int(row["apressure"]),
+                            str(row["data_when_created"]),
                         )
 
                 conn.commit()
@@ -570,7 +580,7 @@ def dashboard():
     )
     user = cursor.fetchone()
 
-    patient_folder = os.path.join("serverdatabase/excel_files/", str(user_id))
+    patient_folder = os.path.join("server_database/excel_files/", str(user_id))
     files = os.listdir(patient_folder) if os.path.exists(patient_folder) else []
 
     conn.close()
@@ -733,7 +743,7 @@ def upload_excel(patient_id):
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
 
-        patient_folder = os.path.join("serverdatabase/excel_files", str(patient_id))
+        patient_folder = os.path.join("server_database/excel_files", str(patient_id))
         os.makedirs(patient_folder, exist_ok=True)
 
         filepath = os.path.join(patient_folder, filename)
@@ -753,7 +763,7 @@ def edit_excel(patient_id, filename):
     """
     Открывает страницу редактора и загружает данные из выбранного файла пациента.
     """
-    patient_folder = os.path.join("serverdatabase/excel_files", str(patient_id))
+    patient_folder = os.path.join("server_database/excel_files", str(patient_id))
     file_path = os.path.join(patient_folder, filename)
 
     if not os.path.exists(file_path):
@@ -782,7 +792,7 @@ def save_excel(patient_id, filename):
         return jsonify({"message": "Немає даних для збереження"}), 400
 
     try:
-        file_path = os.path.join("serverdatabase/excel_files", str(patient_id), filename)
+        file_path = os.path.join("server_database/excel_files", str(patient_id), filename)
         df = pd.DataFrame(data)
         df.to_excel(file_path, index=False, header=False, engine="openpyxl")
         return jsonify({"message": "Таблицю збережено успішно."})
@@ -816,7 +826,7 @@ def download_excel(patient_id, filename):
 
 @app.route("/download_patient_excel/<int:patient_id>/<filename>")
 def download_patient_excel(patient_id, filename): 
-    folder_path = os.path.join("serverdatabase", "excel_files", str(patient_id))
+    folder_path = os.path.join("server_database", "excel_files", str(patient_id))
  
     safe_filename = secure_filename(filename)
 
@@ -831,7 +841,7 @@ def create_new_excel(patient_id):
     data = request.json
     filename = data.get("filename", "new_table.xlsx")
 
-    patient_folder = os.path.join("serverdatabase/excel_files/", str(patient_id))
+    patient_folder = os.path.join("server_database/excel_files/", str(patient_id))
     os.makedirs(patient_folder, exist_ok=True)
 
     file_path = os.path.join(patient_folder, filename)
@@ -934,7 +944,7 @@ def patient_dashboard(patient_id):
             return redirect(url_for("meddashboard"))
 
         # Находим файлы пациента
-        patient_folder = os.path.join("serverdatabase/excel_files", str(patient_id))
+        patient_folder = os.path.join("server_database/excel_files", str(patient_id))
         files = os.listdir(patient_folder) if os.path.exists(patient_folder) else []
 
         return render_template(
@@ -992,7 +1002,7 @@ def upload_document():
 @login_required_with_timeout()
 @roles_required("admin", "doctor")
 def run_tkinter(patient_id): 
-    patient_folder = os.path.join("serverdatabase/excel_files/", str(patient_id))
+    patient_folder = os.path.join("server_database/excel_files/", str(patient_id))
 
     if not os.path.exists(patient_folder):
         return "Ошибка: папка пациента не найдена!", 400
