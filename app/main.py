@@ -69,6 +69,9 @@ def captcha():
 
 @app.route("/register/<token>", methods=["GET", "POST"])
 def register_user(token: str):
+    if is_fully_authenticated():
+        return redirect(url_for("redirect_user"))
+
     conn = get_db_connection()
     cursor = conn.cursor()
 
