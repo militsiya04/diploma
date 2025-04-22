@@ -6,7 +6,7 @@ import re
 import subprocess
 from datetime import datetime
 from io import BytesIO
-
+from flask import send_from_directory
 import cv2
 import numpy as np
 import pandas as pd
@@ -29,6 +29,8 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
+from werkzeug.utils import secure_filename
+
 from services.admin_setup import (
     check_and_generate_admin_link,
     generate_registration_link,
@@ -48,7 +50,6 @@ from utils import (
     login_required_with_timeout,
     roles_required,
 )
-from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = "d9f9a8b7e5a4422aa1c8cf59d6d22e80"
@@ -866,10 +867,11 @@ def download_excel(patient_id, filename):
         return f"Помилка при створенні файлу: {str(e)}", 500
 
 
+@login_required_with_timeout()
+@roles_required("admin", "doctor", "patient")
 @app.route("/download_patient_excel/<int:patient_id>/<filename>")
 def download_patient_excel(patient_id, filename):
     folder_path = os.path.join("server_database", "excel_files", str(patient_id))
-
     safe_filename = secure_filename(filename)
 
     return send_from_directory(folder_path, safe_filename, as_attachment=True)
@@ -1042,7 +1044,7 @@ def upload_document():
 
 @app.route("/run-tkinter/<patient_id>", methods=["POST"])
 @login_required_with_timeout()
-@roles_required("admin", "doctor")
+@roles_required("admin", "doctor", "patient")
 def run_tkinter(patient_id):
     patient_folder = os.path.join("server_database/excel_files/", str(patient_id))
 

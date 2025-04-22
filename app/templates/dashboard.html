@@ -230,6 +230,7 @@
                     <a href="{{ url_for('outbox') }}">📤 Надіслані</a>
                     <a href="{{ url_for('send_message') }}">✉️ Написати повідомлення</a>
                 </div>
+                <button onclick="runTkinter()">Запустити Tkinter</button>
 
                 <a href="{{ url_for('logout') }}" class="logout-link">⬅️ Вийти з кабінету</a>
             </div>
@@ -276,6 +277,12 @@
 
             calendar.render();
         });
+
+        function runTkinter() {
+            fetch("{{ url_for('run_tkinter', patient_id=patient_id) }}", { method: "POST" })
+                .then(response => response.text())
+                .then(data => alert(data));
+        }
     </script>
 
 </body>

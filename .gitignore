@@ -183,4 +183,4 @@ app/database
 
 
  
-/app/server_database
+app/server_database/
