@@ -117,6 +117,18 @@ def create_tables(conn):
     """
     )
 
+    cursor.execute(
+        """
+        CREATE TABLE otp_tokens (
+            user_id INT,
+            code TEXT,
+            type TEXT,
+            expiry DATETIME,
+            used YESNO
+        )
+    """
+    )
+
     conn.commit()
 
 
@@ -137,6 +149,7 @@ def init_database():
         "dispersion",
         "WaS",
         "pressure",
+        "otp_tokens",
     ]
 
     if os.path.exists(DB_PATH):

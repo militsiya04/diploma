@@ -47,6 +47,8 @@ from utils import (
 )
 from werkzeug.utils import secure_filename
 
+from app.services.otp_checking import store_otp, validate_otp
+
 app = Flask(__name__)
 app.secret_key = "d9f9a8b7e5a4422aa1c8cf59d6d22e80"
 
@@ -212,7 +214,18 @@ def authenticate_email():
         flash("No email found.", "error")
         return redirect(url_for("auth_options"))
 
-    send_otp_email(session["user_email"])
+    email = session["user_email"]
+    user_id = session["user_id"]
+    code = "{:06d}".format(random.randint(0, 999999))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    store_otp(cursor, user_id, code, "email")
+    conn.commit()
+    conn.close()
+
+    send_otp_email(email, code)
+
     return redirect(url_for("verify_email"))
 
 
@@ -223,17 +236,22 @@ def verify_email():
     if "user_id" not in session:
         return redirect(url_for("login"))
 
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
     if request.method == "POST":
         entered_otp = request.form["otp"]
-        if "otp" in session and str(session["otp"]) == str(entered_otp):
-            session.pop("otp", None)
+        if validate_otp(cursor, session["user_id"], entered_otp, "email"):
+            conn.commit()
+            conn.close()
             session["session_token"] = generate_session_token(
                 session["user_id"], session["user_position"]
             )
             return redirect(url_for("redirect_user"))
         else:
-            flash("Invalid OTP. Please try again.", "error")
+            flash("Invalid or expired OTP. Please try again.", "error")
 
+    conn.close()
     return render_template("verify_email.html")
 
 
@@ -249,35 +267,40 @@ def authenticate_phone():
 
 @app.route("/verify_phone", methods=["GET", "POST"])
 def verify_phone():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    user_id = session["user_id"]
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
     if request.method == "POST":
         entered_otp = request.form["otp"]
-        actual_otp = session.get("phone_otp")
-
-        if entered_otp == actual_otp:
-            flash("Phone authentication successful!", "success")
+        if validate_otp(cursor, user_id, entered_otp, "phone"):
+            conn.commit()
+            conn.close()
             session["session_token"] = generate_session_token(
-                session["user_id"], session["user_position"]
+                user_id, session["user_position"]
             )
+            flash("Phone authentication successful!", "success")
             return redirect(url_for("redirect_user"))
         else:
-            flash("Invalid OTP. Try again.", "error")
+            flash("Invalid or expired OTP.", "error")
     else:
-        # Генерация и отправка кода по SMS
-        generated_code = "{:06d}".format(random.randint(0, 999999))
-        session["phone_otp"] = generated_code
-
+        code = "{:06d}".format(random.randint(0, 999999))
+        store_otp(cursor, user_id, code, "phone")
         phone_number = session.get("user_phone")
         if phone_number:
-            message = f"Ваш код подтверждения: {generated_code}"
-            result = send_sms([phone_number], message)
-
+            result = send_sms([phone_number], f"Ваш код подтверждения: {code}")
             if "error" in result:
                 flash("Ошибка при отправке SMS: " + result["error"], "error")
             else:
                 flash("Код отправлен на ваш номер телефона.", "info")
         else:
             flash("Номер телефона не найден в сессии.", "error")
+        conn.commit()
 
+    conn.close()
     return render_template("verify_phone.html")
 
 
@@ -384,12 +407,15 @@ def generate_links():
         flash(f"✅ Посилання для {selected_role} згенеровано!", "success")
         return redirect(url_for("generate_links"))
 
-    cursor.execute("""
+    cursor.execute(
+        """
         SELECT token, role, expiry
         FROM registration_tokens
         WHERE used = 0 AND expiry > ?
         ORDER BY expiry ASC
-    """, (datetime.now().strftime("%Y-%m-%d %H:%M:%S"),))
+    """,
+        (datetime.now().strftime("%Y-%m-%d %H:%M:%S"),),
+    )
 
     token_data = cursor.fetchall()
     conn.close()
@@ -405,9 +431,7 @@ def generate_links():
     ]
 
     return render_template(
-        "generate_links.html",
-        allowed_roles=allowed_roles,
-        tokens=tokens
+        "generate_links.html", allowed_roles=allowed_roles, tokens=tokens
     )
 
 
