@@ -6,7 +6,7 @@ import re
 import subprocess
 from datetime import datetime
 from io import BytesIO
-
+from flask import send_from_directory
 import cv2
 import numpy as np
 import pandas as pd
@@ -570,7 +570,7 @@ def dashboard():
     )
     user = cursor.fetchone()
 
-    patient_folder = os.path.join("patientexcels", str(user_id))
+    patient_folder = os.path.join("serverdatabase/excel_files/", str(user_id))
     files = os.listdir(patient_folder) if os.path.exists(patient_folder) else []
 
     conn.close()
@@ -733,7 +733,7 @@ def upload_excel(patient_id):
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
 
-        patient_folder = os.path.join("serverdatabase/", str(patient_id))
+        patient_folder = os.path.join("serverdatabase/excel_files", str(patient_id))
         os.makedirs(patient_folder, exist_ok=True)
 
         filepath = os.path.join(patient_folder, filename)
@@ -753,7 +753,7 @@ def edit_excel(patient_id, filename):
     """
     Открывает страницу редактора и загружает данные из выбранного файла пациента.
     """
-    patient_folder = os.path.join("patientexcels", str(patient_id))
+    patient_folder = os.path.join("serverdatabase/excel_files", str(patient_id))
     file_path = os.path.join(patient_folder, filename)
 
     if not os.path.exists(file_path):
@@ -782,7 +782,7 @@ def save_excel(patient_id, filename):
         return jsonify({"message": "Немає даних для збереження"}), 400
 
     try:
-        file_path = os.path.join("patientexcels", str(patient_id), filename)
+        file_path = os.path.join("serverdatabase/excel_files", str(patient_id), filename)
         df = pd.DataFrame(data)
         df.to_excel(file_path, index=False, header=False, engine="openpyxl")
         return jsonify({"message": "Таблицю збережено успішно."})
@@ -814,6 +814,14 @@ def download_excel(patient_id, filename):
     except Exception as e:
         return f"Помилка при створенні файлу: {str(e)}", 500
 
+@app.route("/download_patient_excel/<int:patient_id>/<filename>")
+def download_patient_excel(patient_id, filename): 
+    folder_path = os.path.join("serverdatabase", "excel_files", str(patient_id))
+ 
+    safe_filename = secure_filename(filename)
+
+    return send_from_directory(folder_path, safe_filename, as_attachment=True)
+
 
 @app.route("/patients/<int:patient_id>/create_new_excel", methods=["POST"])
 @login_required_with_timeout()
@@ -823,7 +831,7 @@ def create_new_excel(patient_id):
     data = request.json
     filename = data.get("filename", "new_table.xlsx")
 
-    patient_folder = os.path.join("patientexcels", str(patient_id))
+    patient_folder = os.path.join("serverdatabase/excel_files/", str(patient_id))
     os.makedirs(patient_folder, exist_ok=True)
 
     file_path = os.path.join(patient_folder, filename)
@@ -884,7 +892,7 @@ def meddashboard():
     if sort_order not in ["ASC", "DESC"]:
         sort_order = "ASC"
 
-    query = "SELECT id, first_name, surname, phone, email FROM users WHERE position = 'Пациент'"
+    query = "SELECT id, first_name, surname, phone, email FROM users WHERE position = 'patient'"
     params = []
 
     if search_query:
@@ -926,7 +934,7 @@ def patient_dashboard(patient_id):
             return redirect(url_for("meddashboard"))
 
         # Находим файлы пациента
-        patient_folder = os.path.join("patientexcels", str(patient_id))
+        patient_folder = os.path.join("serverdatabase/excel_files", str(patient_id))
         files = os.listdir(patient_folder) if os.path.exists(patient_folder) else []
 
         return render_template(
@@ -983,9 +991,8 @@ def upload_document():
 @app.route("/run-tkinter/<patient_id>", methods=["POST"])
 @login_required_with_timeout()
 @roles_required("admin", "doctor")
-def run_tkinter(patient_id):
-    path = r"C:\Users\User\Documents\diploma\app\patientexcels"
-    patient_folder = os.path.join(path, patient_id)
+def run_tkinter(patient_id): 
+    patient_folder = os.path.join("serverdatabase/excel_files/", str(patient_id))
 
     if not os.path.exists(patient_folder):
         return "Ошибка: папка пациента не найдена!", 400
