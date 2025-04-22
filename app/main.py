@@ -27,7 +27,10 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
-from services.admin_setup import check_and_generate_admin_link
+from services.admin_setup import (
+    check_and_generate_admin_link,
+    generate_registration_link,
+)
 from services.captcha_generator import generate_captcha_image, generate_captcha_text
 from services.document_reader import extract_text_from_docx, extract_text_from_pdf
 from services.email_otp_service import configure_mail, send_otp_email
@@ -354,6 +357,37 @@ def logout():
 
 
 # ----- AUTHENTICATION CYCLE END -----
+
+
+@app.route("/generate-links", methods=["GET", "POST"])
+@login_required_with_timeout()
+@roles_required("admin", "doctor")
+def generate_links():
+    urls = []
+
+    current_user_role = session["user_position"]
+    allowed_roles = []
+
+    if current_user_role == "admin":
+        allowed_roles = ["doctor", "patient"]
+    elif current_user_role == "doctor":
+        allowed_roles = ["patient"]
+
+    if request.method == "POST":
+        selected_role = request.form.get("role")
+        if selected_role not in allowed_roles:
+            flash("❌ Ви не маєте прав створювати користувачів з цією роллю!", "error")
+            return redirect(url_for("generate_links"))
+
+        conn = get_db_connection()
+        url = generate_registration_link(conn, selected_role, hours_valid=24)
+        urls.append(url)
+
+        flash(f"✅ Посилання для {selected_role} згенеровано!", "success")
+
+    return render_template(
+        "generate_links.html", urls=urls, allowed_roles=allowed_roles
+    )
 
 
 @app.route("/database", methods=["GET", "POST"])
