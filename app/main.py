@@ -23,10 +23,13 @@ from flask import (
     session,
     url_for,
 )
+from PIL import Image
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
+from werkzeug.utils import secure_filename
+
 from services.admin_setup import (
     check_and_generate_admin_link,
     generate_registration_link,
@@ -45,7 +48,6 @@ from utils import (
     login_required_with_timeout,
     roles_required,
 )
-from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = "d9f9a8b7e5a4422aa1c8cf59d6d22e80"
@@ -119,28 +121,41 @@ def register_user(token: str):
         session.pop("captcha", None)
 
         cursor.execute(
-            """
-            SELECT * FROM users 
-            WHERE login = ? OR email = ? OR phone = ?
-        """,
+            "SELECT * FROM users WHERE login = ? OR email = ? OR phone = ?",
             (login, email, phone),
         )
         if cursor.fetchone():
             conn.close()
             flash(
-                "❗ Користувач з таким логіном, email або телефоном уже існує!",
-                "error",
+                "❗ Користувач з таким логіном, email або телефоном уже існує!", "error"
             )
             return redirect(request.url)
 
         hashed_password = hash_password(password)
+
         cursor.execute(
             """
             INSERT INTO users (position, login, password, email, phone, first_name, surname)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        """,
+            """,
             (role, login, hashed_password, email, phone, first_name, surname),
         )
+
+        # Отримати останній ID
+        cursor.execute("SELECT @@IDENTITY")
+        user_id = cursor.fetchone()[0]
+
+        # Збереження фото
+        photo = request.files.get("photo")
+        if photo and photo.filename.lower().endswith((".jpg", ".jpeg")):
+            img = Image.open(photo)
+            save_path = f"serverdatabase/verification_photos/{user_id}.jpg"
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            img.convert("RGB").save(save_path, "JPEG")
+        else:
+            flash("⚠️ Фото має бути у форматі JPG!", "error")
+            conn.rollback()
+            return redirect(request.url)
 
         cursor.execute(
             "UPDATE registration_tokens SET used = 1 WHERE token = ?", (token,)
@@ -384,12 +399,15 @@ def generate_links():
         flash(f"✅ Посилання для {selected_role} згенеровано!", "success")
         return redirect(url_for("generate_links"))
 
-    cursor.execute("""
+    cursor.execute(
+        """
         SELECT token, role, expiry
         FROM registration_tokens
         WHERE used = 0 AND expiry > ?
         ORDER BY expiry ASC
-    """, (datetime.now().strftime("%Y-%m-%d %H:%M:%S"),))
+    """,
+        (datetime.now().strftime("%Y-%m-%d %H:%M:%S"),),
+    )
 
     token_data = cursor.fetchall()
     conn.close()
@@ -405,9 +423,7 @@ def generate_links():
     ]
 
     return render_template(
-        "generate_links.html",
-        allowed_roles=allowed_roles,
-        tokens=tokens
+        "generate_links.html", allowed_roles=allowed_roles, tokens=tokens
     )
 
 
