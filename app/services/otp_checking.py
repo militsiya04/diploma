@@ -1,11 +1,29 @@
+import hashlib
+import hmac
+import secrets
 from datetime import datetime, timedelta
 
-from app.utils import check_password, hash_password
+
+def hash_otp(password: str) -> str:
+    salt = secrets.token_hex(16)
+    hashed = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100000)
+    return f"{salt}${hashed.hex()}"
+
+
+def check_otp(password: str, hashed_password: str) -> bool:
+    try:
+        salt, hashed = hashed_password.split("$")
+        new_hash = hashlib.pbkdf2_hmac(
+            "sha256", password.encode(), salt.encode(), 100000
+        ).hex()
+        return hmac.compare_digest(new_hash, hashed)
+    except Exception:
+        return False
 
 
 def store_otp(cursor, user_id: int, code: str, otp_type: str) -> None:
     expiry: datetime = datetime.now() + timedelta(minutes=5)
-    hashed_code: str = hash_password(code)
+    hashed_code: str = hash_otp(code)
 
     cursor.execute(
         """
@@ -43,7 +61,7 @@ def validate_otp(cursor, user_id: int, code: str, otp_type: str) -> bool:
     if used or datetime.now() > expiry_datetime:
         return False
 
-    if check_password(code, stored_hash):
+    if check_otp(code, stored_hash):
         cursor.execute(
             """
             UPDATE otp_tokens SET used = 1
