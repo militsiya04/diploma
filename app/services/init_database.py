@@ -81,8 +81,9 @@ def create_tables(conn):
         """
         CREATE TABLE pulse (
             id COUNTER PRIMARY KEY,
+            user_id INTEGER,
             pulse INTEGER,
-            data DATETIME
+            date_when_created DATETIME
         )
     """
     )
@@ -91,8 +92,9 @@ def create_tables(conn):
         """
         CREATE TABLE dispersion (
             id COUNTER PRIMARY KEY,
+            user_id INTEGER,
             pulse INTEGER,
-            data DATETIME
+            date_when_created DATETIME
         )
     """
     )
@@ -101,8 +103,10 @@ def create_tables(conn):
         """
         CREATE TABLE WaS (
             id COUNTER PRIMARY KEY,
+            user_id INTEGER,
             weight INTEGER,
-            sugar TEXT(100)
+            sugar TEXT(100),
+            date_when_created DATETIME
         )
     """
     )
@@ -111,8 +115,10 @@ def create_tables(conn):
         """
         CREATE TABLE pressure (
             id COUNTER PRIMARY KEY,
+            user_id INTEGER,
             bpressure INTEGER,
-            apressure INTEGER
+            apressure INTEGER,
+            date_when_created DATETIME
         )
     """
     )

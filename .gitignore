@@ -182,4 +182,5 @@ app/uploads
 app/database
 
 
-
+ 
+/app/server_database
