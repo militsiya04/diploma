@@ -92,9 +92,9 @@
 </head>
 <body>
   <div class="form-wrapper">
-    <form action="{{ url_for('register') }}" method="POST" enctype="multipart/form-data">
+    <form action="{{ url_for('register_user', token=token) }}" method="POST" enctype="multipart/form-data">
 
-      <h2>Реєстрація користувача</h2>
+      <h2>Реєстрація користувача (роль: {{ role }})</h2>
 
       <label for="login">Логін:</label>
       <input type="text" id="login" name="login" required>
@@ -121,7 +121,7 @@
       <textarea id="info" name="info"></textarea>
 
       <img src="{{ url_for('captcha') }}" alt="Капча"><br><br>
-      <input type="text" id="captcha" name="captcha" required><br><br>
+      <input type="text" id="captcha" name="captcha" placeholder="Введіть капчу" required><br><br>
 
       <button type="submit">Зареєструватися</button><br>
 

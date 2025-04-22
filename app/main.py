@@ -27,8 +27,6 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
-from werkzeug.utils import secure_filename
-
 from services.admin_setup import check_and_generate_admin_link
 from services.captcha_generator import generate_captcha_image, generate_captcha_text
 from services.document_reader import extract_text_from_docx, extract_text_from_pdf
@@ -44,6 +42,7 @@ from utils import (
     login_required_with_timeout,
     roles_required,
 )
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = "d9f9a8b7e5a4422aa1c8cf59d6d22e80"
@@ -68,82 +67,13 @@ def captcha():
     return send_file(img_io, mimetype="image/png")
 
 
-@app.route("/register", methods=["GET", "POST"])  # DEPRECATED
-def register():
-    if (
-        "user_id" in session
-        and "user_position" in session
-        and session.get("authenticated") == True
-    ):
-        return redirect(url_for("redirect_user"))
-
-    if request.method == "POST":
-        login = request.form["login"]
-        password = request.form["password"]
-        email = request.form["email"]
-        phone = request.form["phone"]
-        first_name = request.form["first_name"]
-        surname = request.form["surname"]
-        user_captcha = request.form["captcha"].strip().lower()
-        session_captcha = session.get("captcha", "").strip().lower()
-
-        if user_captcha != session_captcha:
-            flash("Ошибка: Неверная капча!", "error")
-            return redirect(url_for("register"))
-
-        session.pop("captcha", None)
-
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        # Проверка на уникальность логина, email и телефона
-        cursor.execute(
-            """
-            SELECT * FROM users 
-            WHERE login = ? OR email = ? OR phone = ?
-        """,
-            (login, email, phone),
-        )
-
-        existing_user = cursor.fetchone()
-
-        if existing_user:
-            conn.close()
-            flash(
-                "Ошибка: Пользователь с таким логином, email или телефоном уже существует!",
-                "error",
-            )
-            return redirect(url_for("register"))
-
-        # Жёстко задаём позицию "Пациент"
-        position = "Пациент"
-
-        cursor.execute(
-            """
-            INSERT INTO users (position, login, password, email, phone, first_name, surname)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """,
-            (position, login, password, email, phone, first_name, surname),
-        )
-
-        conn.commit()
-        conn.close()
-
-        flash("Регистрация прошла успешно!", "success")
-        return redirect(url_for("login"))
-
-    return render_template("register.html")
-
-
-@app.route("/admin-register/<token>", methods=["GET", "POST"])
-def admin_register(token):
+@app.route("/register/<token>", methods=["GET", "POST"])
+def register_user(token: str):
     conn = get_db_connection()
     cursor = conn.cursor()
 
     cursor.execute(
-        """
-        SELECT token, expiry, used FROM admin_token WHERE token = ?
-    """,
+        "SELECT token, expiry, used, role FROM registration_tokens WHERE token = ?",
         (token,),
     )
     token_data = cursor.fetchone()
@@ -152,17 +82,19 @@ def admin_register(token):
         return "⛔ Посилання недійсне або не існує.", 403
     if token_data[2]:
         return "⛔ Це посилання вже використано.", 403
-    if datetime.now() > token_data[1]:
+    if datetime.now() > datetime.strptime(token_data[1], "%Y-%m-%d %H:%M:%S"):
         return "⛔ Посилання протерміноване.", 403
 
-    cursor.execute("SELECT id FROM users WHERE position = 'admin'")
-    existing_admin = cursor.fetchone()
-    if existing_admin:
-        conn.close()
-        return (
-            "⚠️ Адміністратор уже існує в системі. Повторна реєстрація неможлива.",
-            403,
-        )
+    role = token_data[3]
+
+    if role == "admin":
+        cursor.execute("SELECT id FROM users WHERE position = 'admin'")
+        if cursor.fetchone():
+            conn.close()
+            return (
+                "⚠️ Адміністратор уже існує в системі. Повторна реєстрація неможлива.",
+                403,
+            )
 
     if request.method == "POST":
         login = request.form["login"]
@@ -175,7 +107,7 @@ def admin_register(token):
         session_captcha = session.get("captcha", "").strip().lower()
 
         if user_captcha != session_captcha:
-            flash("Ошибка: Неверная капча!", "error")
+            flash("❌ Невірна капча!", "error")
             return redirect(request.url)
 
         session.pop("captcha", None)
@@ -190,28 +122,30 @@ def admin_register(token):
         if cursor.fetchone():
             conn.close()
             flash(
-                "Пользователь с таким логином, email или телефоном уже существует!",
+                "❗ Користувач з таким логіном, email або телефоном уже існує!",
                 "error",
             )
             return redirect(request.url)
 
-        position = "admin"
         hashed_password = hash_password(password)
         cursor.execute(
             """
             INSERT INTO users (position, login, password, email, phone, first_name, surname)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-            (position, login, hashed_password, email, phone, first_name, surname),
+            (role, login, hashed_password, email, phone, first_name, surname),
         )
-        cursor.execute("UPDATE admin_token SET used = 1 WHERE token = ?", (token,))
+
+        cursor.execute(
+            "UPDATE registration_tokens SET used = 1 WHERE token = ?", (token,)
+        )
         conn.commit()
         conn.close()
 
-        flash("✅ Адміністратор успішно створений!", "success")
+        flash(f"✅ Користувач з роллю '{role}' успішно зареєстрований!", "success")
         return redirect(url_for("login"))
 
-    return render_template("admin_register.html", token=token)
+    return render_template("register.html", token=token, role=role)
 
 
 @app.route("/", methods=["GET", "POST"])
