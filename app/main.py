@@ -6,7 +6,7 @@ import re
 import subprocess
 from datetime import datetime
 from io import BytesIO
-from flask import send_from_directory
+
 import cv2
 import numpy as np
 import pandas as pd
@@ -20,6 +20,7 @@ from flask import (
     render_template,
     request,
     send_file,
+    send_from_directory,
     session,
     url_for,
 )
@@ -28,8 +29,6 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
-from werkzeug.utils import secure_filename
-
 from services.admin_setup import (
     check_and_generate_admin_link,
     generate_registration_link,
@@ -49,6 +48,7 @@ from utils import (
     login_required_with_timeout,
     roles_required,
 )
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = "d9f9a8b7e5a4422aa1c8cf59d6d22e80"
@@ -476,7 +476,10 @@ def database():
                 if table_choice == "Pulse":
                     required_columns = {"user_id", "pulse", "date_when_created"}
                     if not required_columns.issubset(df.columns):
-                        flash("❌ Pulse: потрібні стовпці: user_id, pulse, date_when_created", "error")
+                        flash(
+                            "❌ Pulse: потрібні стовпці: user_id, pulse, date_when_created",
+                            "error",
+                        )
                         return redirect(url_for("database"))
 
                     cursor.execute("DELETE FROM pulse")
@@ -492,7 +495,8 @@ def database():
                     required_columns = {"user_id", "pulse", "date_when_created"}
                     if not required_columns.issubset(df.columns):
                         flash(
-                            "❌ Dispersion: потрібні стовпці: user_id, pulse, date_when_created", "error"
+                            "❌ Dispersion: потрібні стовпці: user_id, pulse, date_when_created",
+                            "error",
                         )
                         return redirect(url_for("database"))
 
@@ -505,9 +509,17 @@ def database():
                             str(row["date_when_created"]),
                         )
                 elif table_choice == "WaS":
-                    required_columns = {"user_id", "weight", "sugar", "date_when_created"}
+                    required_columns = {
+                        "user_id",
+                        "weight",
+                        "sugar",
+                        "date_when_created",
+                    }
                     if not required_columns.issubset(df.columns):
-                        flash("❌ WaS: потрібні стовпці: user_id, weight, sugar, date_when_created", "error")
+                        flash(
+                            "❌ WaS: потрібні стовпці: user_id, weight, sugar, date_when_created",
+                            "error",
+                        )
                         return redirect(url_for("database"))
 
                     cursor.execute("DELETE FROM WaS")
@@ -520,7 +532,12 @@ def database():
                             str(row["date_when_created"]),
                         )
                 elif table_choice == "Pressure":
-                    required_columns = {"user_id", "bpressure", "apressure", "date_when_created"}
+                    required_columns = {
+                        "user_id",
+                        "bpressure",
+                        "apressure",
+                        "date_when_created",
+                    }
                     if not required_columns.issubset(df.columns.str.lower()):
                         flash(
                             "❌ Pressure: потрібні стовпці: user_id, bpressure, apressure, date_when_created",
@@ -814,7 +831,9 @@ def save_excel(patient_id, filename):
         return jsonify({"message": "Немає даних для збереження"}), 400
 
     try:
-        file_path = os.path.join("server_database/excel_files", str(patient_id), filename)
+        file_path = os.path.join(
+            "server_database/excel_files", str(patient_id), filename
+        )
         df = pd.DataFrame(data)
         df.to_excel(file_path, index=False, header=False, engine="openpyxl")
         return jsonify({"message": "Таблицю збережено успішно."})
@@ -846,10 +865,11 @@ def download_excel(patient_id, filename):
     except Exception as e:
         return f"Помилка при створенні файлу: {str(e)}", 500
 
+
 @app.route("/download_patient_excel/<int:patient_id>/<filename>")
-def download_patient_excel(patient_id, filename): 
+def download_patient_excel(patient_id, filename):
     folder_path = os.path.join("server_database", "excel_files", str(patient_id))
- 
+
     safe_filename = secure_filename(filename)
 
     return send_from_directory(folder_path, safe_filename, as_attachment=True)
@@ -1023,7 +1043,7 @@ def upload_document():
 @app.route("/run-tkinter/<patient_id>", methods=["POST"])
 @login_required_with_timeout()
 @roles_required("admin", "doctor")
-def run_tkinter(patient_id): 
+def run_tkinter(patient_id):
     patient_folder = os.path.join("server_database/excel_files/", str(patient_id))
 
     if not os.path.exists(patient_folder):
