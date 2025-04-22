@@ -82,7 +82,7 @@ def register_user(token: str):
         return "⛔ Посилання недійсне або не існує.", 403
     if token_data[2]:
         return "⛔ Це посилання вже використано.", 403
-    if datetime.now() > datetime.strptime(token_data[1], "%Y-%m-%d %H:%M:%S"):
+    if datetime.now() > token_data[1]:
         return "⛔ Посилання протерміноване.", 403
 
     role = token_data[3]
