@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Генерація посилань</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f3f3;
+      padding: 40px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    h2 {
+      color: #004a4a;
+      margin-bottom: 20px;
+    }
+
+    label, select, button {
+      display: block;
+      width: 100%;
+      margin-bottom: 15px;
+      font-size: 16px;
+    }
+
+    select, button {
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+
+    button {
+      background-color: #005C5C;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #007D7D;
+    }
+
+    .flashes {
+      margin-top: 20px;
+      padding: 10px;
+      border-radius: 6px;
+      background-color: #fbeaea;
+      color: #b20000;
+      list-style-type: none;
+    }
+
+    .success {
+      background-color: #e0f5e0;
+      color: #2e7d32;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f0f0f0;
+      color: #333;
+    }
+
+    a {
+      color: #006666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🔗 Згенерувати реєстраційне посилання</h2>
+
+    <form method="POST">
+      <label for="role">Оберіть роль:</label>
+      <select name="role" id="role" required>
+        {% for role in allowed_roles %}
+          <option value="{{ role }}">{{ role|capitalize }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">Згенерувати посилання</button>
+    </form>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="flashes">
+          {% for category, message in messages %}
+            <li class="{{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    {% if tokens %}
+      <h3>📋 Активні посилання:</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Роль</th>
+            <th>Дійсне до</th>
+            <th>Посилання</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for token in tokens %}
+            <tr>
+              <td>{{ token.role|capitalize }}</td>
+              <td>{{ token.expiry }}</td>
+              <td><a href="{{ token.url }}" target="_blank">{{ token.url }}</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>ℹ️ Активних запрошень поки немає.</p>
+    {% endif %}
+
+    <a href="{{ url_for('meddashboard') }}">⬅ Назад до панелі</a>
+  </div>
+</body>
+</html>
