@@ -182,6 +182,5 @@ app/uploads
 app/database
 
 
-
-/app/serverdatabase/verification_photos
-/app/serverdatabase
+ 
+/app/server_database
