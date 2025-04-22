@@ -12,7 +12,7 @@
     }
 
     .container {
-      max-width: 600px;
+      max-width: 800px;
       margin: auto;
       background: white;
       padding: 30px;
@@ -64,13 +64,21 @@
       color: #2e7d32;
     }
 
-    ul.generated-urls {
-      list-style-type: none;
-      padding-left: 0;
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
     }
 
-    ul.generated-urls li {
-      margin-bottom: 8px;
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f0f0f0;
+      color: #333;
     }
 
     a {
@@ -102,13 +110,28 @@
       {% endif %}
     {% endwith %}
 
-    {% if urls %}
-      <h3>📎 Посилання:</h3>
-      <ul class="generated-urls">
-        {% for url in urls %}
-          <li><a href="{{ url }}" target="_blank">{{ url }}</a></li>
-        {% endfor %}
-      </ul>
+    {% if tokens %}
+      <h3>📋 Активні посилання:</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Роль</th>
+            <th>Дійсне до</th>
+            <th>Посилання</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for token in tokens %}
+            <tr>
+              <td>{{ token.role|capitalize }}</td>
+              <td>{{ token.expiry }}</td>
+              <td><a href="{{ token.url }}" target="_blank">{{ token.url }}</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>ℹ️ Активних запрошень поки немає.</p>
     {% endif %}
 
     <a href="{{ url_for('meddashboard') }}">⬅ Назад до панелі</a>

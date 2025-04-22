@@ -363,7 +363,8 @@ def logout():
 @login_required_with_timeout()
 @roles_required("admin", "doctor")
 def generate_links():
-    urls = []
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
     current_user_role = session["user_position"]
     allowed_roles = []
@@ -379,14 +380,34 @@ def generate_links():
             flash("❌ Ви не маєте прав створювати користувачів з цією роллю!", "error")
             return redirect(url_for("generate_links"))
 
-        conn = get_db_connection()
-        url = generate_registration_link(conn, selected_role, hours_valid=24)
-        urls.append(url)
-
+        generate_registration_link(conn, selected_role, hours_valid=24)
         flash(f"✅ Посилання для {selected_role} згенеровано!", "success")
+        return redirect(url_for("generate_links"))
+
+    cursor.execute("""
+        SELECT token, role, expiry
+        FROM registration_tokens
+        WHERE used = 0 AND expiry > ?
+        ORDER BY expiry ASC
+    """, (datetime.now().strftime("%Y-%m-%d %H:%M:%S"),))
+
+    token_data = cursor.fetchall()
+    conn.close()
+
+    base_url = request.host_url.rstrip("/")
+    tokens = [
+        {
+            "url": f"{base_url}/register/{row[0]}",
+            "role": row[1],
+            "expiry": row[2],
+        }
+        for row in token_data
+    ]
 
     return render_template(
-        "generate_links.html", urls=urls, allowed_roles=allowed_roles
+        "generate_links.html",
+        allowed_roles=allowed_roles,
+        tokens=tokens
     )
 
 
