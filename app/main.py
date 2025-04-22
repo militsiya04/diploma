@@ -314,8 +314,8 @@ def verify_face():
         np_arr = np.frombuffer(img_bytes, np.uint8)
         frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-        input_photo_path = f"patientphoto/temp_{user_id}.jpg"
-        reference_photo_path = f"patientphoto/{user_id}.jpg"
+        input_photo_path = f"serverdatabase/verification_photos/temp_{user_id}.jpg"
+        reference_photo_path = f"serverdatabase/verification_photos/{user_id}.jpg"
         cv2.imwrite(input_photo_path, frame)
 
         if not os.path.exists(reference_photo_path):
@@ -733,7 +733,7 @@ def upload_excel(patient_id):
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
 
-        patient_folder = os.path.join("patientexcels", str(patient_id))
+        patient_folder = os.path.join("serverdatabase/", str(patient_id))
         os.makedirs(patient_folder, exist_ok=True)
 
         filepath = os.path.join(patient_folder, filename)
