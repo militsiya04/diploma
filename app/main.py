@@ -446,7 +446,14 @@ def database():
                 if table_choice == "Pulse":
                     required_columns = {"id", "pulse", "data"}
                     if not required_columns.issubset(df.columns):
+<<<<<<< Updated upstream
                         flash("❌ Pulse: потрібні стовпці: id, pulse, data", "error")
+=======
+                        flash(
+                            "❌ Pulse: потрібні стовпці: user_id, pulse, date_when_created",
+                            "error",
+                        )
+>>>>>>> Stashed changes
                         return redirect(url_for("database"))
 
                     cursor.execute("DELETE FROM pulse")
@@ -462,7 +469,12 @@ def database():
                     required_columns = {"id", "pulse", "data"}
                     if not required_columns.issubset(df.columns):
                         flash(
+<<<<<<< Updated upstream
                             "❌ Dispersion: потрібні стовпці: id, pulse, data", "error"
+=======
+                            "❌ Dispersion: потрібні стовпці: user_id, pulse, date_when_created",
+                            "error",
+>>>>>>> Stashed changes
                         )
                         return redirect(url_for("database"))
 
@@ -475,9 +487,23 @@ def database():
                             str(row["data"]),
                         )
                 elif table_choice == "WaS":
+<<<<<<< Updated upstream
                     required_columns = {"id", "weight", "sugar"}
                     if not required_columns.issubset(df.columns):
                         flash("❌ WaS: потрібні стовпці: id, weight, sugar", "error")
+=======
+                    required_columns = {
+                        "user_id",
+                        "weight",
+                        "sugar",
+                        "date_when_created",
+                    }
+                    if not required_columns.issubset(df.columns):
+                        flash(
+                            "❌ WaS: потрібні стовпці: user_id, weight, sugar, date_when_created",
+                            "error",
+                        )
+>>>>>>> Stashed changes
                         return redirect(url_for("database"))
 
                     cursor.execute("DELETE FROM WaS")
@@ -489,7 +515,16 @@ def database():
                             float(row["sugar"]),
                         )
                 elif table_choice == "Pressure":
+<<<<<<< Updated upstream
                     required_columns = {"id", "bpressure", "apressure"}
+=======
+                    required_columns = {
+                        "user_id",
+                        "bpressure",
+                        "apressure",
+                        "date_when_created",
+                    }
+>>>>>>> Stashed changes
                     if not required_columns.issubset(df.columns.str.lower()):
                         flash(
                             "❌ Pressure: потрібні стовпці: id, bpressure, apressure",
@@ -782,7 +817,13 @@ def save_excel(patient_id, filename):
         return jsonify({"message": "Немає даних для збереження"}), 400
 
     try:
+<<<<<<< Updated upstream
         file_path = os.path.join("serverdatabase/excel_files", str(patient_id), filename)
+=======
+        file_path = os.path.join(
+            "server_database/excel_files", str(patient_id), filename
+        )
+>>>>>>> Stashed changes
         df = pd.DataFrame(data)
         df.to_excel(file_path, index=False, header=False, engine="openpyxl")
         return jsonify({"message": "Таблицю збережено успішно."})
@@ -814,10 +855,17 @@ def download_excel(patient_id, filename):
     except Exception as e:
         return f"Помилка при створенні файлу: {str(e)}", 500
 
+
 @app.route("/download_patient_excel/<int:patient_id>/<filename>")
+<<<<<<< Updated upstream
 def download_patient_excel(patient_id, filename): 
     folder_path = os.path.join("serverdatabase", "excel_files", str(patient_id))
  
+=======
+def download_patient_excel(patient_id, filename):
+    folder_path = os.path.join("server_database", "excel_files", str(patient_id))
+
+>>>>>>> Stashed changes
     safe_filename = secure_filename(filename)
 
     return send_from_directory(folder_path, safe_filename, as_attachment=True)
@@ -990,9 +1038,15 @@ def upload_document():
 
 @app.route("/run-tkinter/<patient_id>", methods=["POST"])
 @login_required_with_timeout()
+<<<<<<< Updated upstream
 @roles_required("admin", "doctor")
 def run_tkinter(patient_id): 
     patient_folder = os.path.join("serverdatabase/excel_files/", str(patient_id))
+=======
+@roles_required("admin", "doctor", "patient")
+def run_tkinter(patient_id):
+    patient_folder = os.path.join("server_database/excel_files/", str(patient_id))
+>>>>>>> Stashed changes
 
     if not os.path.exists(patient_folder):
         return "Ошибка: папка пациента не найдена!", 400
