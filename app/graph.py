@@ -16,10 +16,10 @@ class ExcelGraphApp:
         self.root.configure(bg="white")
         self.root.geometry("420x600")
 
-        self.patient_id = patient_id 
+        self.patient_id = patient_id
         self.patient_folder = os.path.join(
             "server_database/excel_files/", str(patient_id)
-        )  
+        )
         self.files = []
         self.data = {}
         self.graph_type = "Лінійний"

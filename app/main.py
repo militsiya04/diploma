@@ -476,11 +476,11 @@ def database():
 
                 if table_choice == "Pulse":
                     required_columns = {"user_id", "pulse", "date_when_created"}
-                    if not required_columns.issubset(df.columns): 
+                    if not required_columns.issubset(df.columns):
                         flash(
                             "❌ Pulse: потрібні стовпці: user_id, pulse, date_when_created",
                             "error",
-                        ) 
+                        )
                         return redirect(url_for("database"))
 
                     cursor.execute("DELETE FROM pulse")
@@ -495,9 +495,9 @@ def database():
                 elif table_choice == "Dispersion":
                     required_columns = {"user_id", "pulse", "date_when_created"}
                     if not required_columns.issubset(df.columns):
-                        flash( 
+                        flash(
                             "❌ Dispersion: потрібні стовпці: user_id, pulse, date_when_created",
-                            "error", 
+                            "error",
                         )
                         return redirect(url_for("database"))
 
@@ -509,18 +509,18 @@ def database():
                             int(row["pulse"]),
                             str(row["date_when_created"]),
                         )
-                elif table_choice == "WaS":  
+                elif table_choice == "WaS":
                     required_columns = {
                         "user_id",
                         "weight",
                         "sugar",
                         "date_when_created",
                     }
-                    if not required_columns.issubset(df.columns): 
+                    if not required_columns.issubset(df.columns):
                         flash(
                             "❌ WaS: потрібні стовпці: user_id, weight, sugar, date_when_created",
                             "error",
-                        ) 
+                        )
                         return redirect(url_for("database"))
 
                     cursor.execute("DELETE FROM WaS")
@@ -532,13 +532,13 @@ def database():
                             float(row["sugar"]),
                             str(row["date_when_created"]),
                         )
-                elif table_choice == "Pressure": 
+                elif table_choice == "Pressure":
                     required_columns = {
                         "user_id",
                         "bpressure",
                         "apressure",
                         "date_when_created",
-                    } 
+                    }
                     if not required_columns.issubset(df.columns.str.lower()):
                         flash(
                             "❌ Pressure: потрібні стовпці: user_id, bpressure, apressure, date_when_created",
@@ -619,8 +619,8 @@ def dashboard():
         (user_id,),
     )
     user = cursor.fetchone()
- 
-    patient_folder = os.path.join("server_database/excel_files/", str(user_id)) 
+
+    patient_folder = os.path.join("server_database/excel_files/", str(user_id))
     files = os.listdir(patient_folder) if os.path.exists(patient_folder) else []
 
     conn.close()
@@ -782,8 +782,8 @@ def upload_excel(patient_id):
     file = request.files.get("file")
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
- 
-        patient_folder = os.path.join("server_database/excel_files", str(patient_id)) 
+
+        patient_folder = os.path.join("server_database/excel_files", str(patient_id))
         os.makedirs(patient_folder, exist_ok=True)
 
         filepath = os.path.join(patient_folder, filename)
@@ -802,8 +802,8 @@ def upload_excel(patient_id):
 def edit_excel(patient_id, filename):
     """
     Открывает страницу редактора и загружает данные из выбранного файла пациента.
-    """ 
-    patient_folder = os.path.join("server_database/excel_files", str(patient_id)) 
+    """
+    patient_folder = os.path.join("server_database/excel_files", str(patient_id))
     file_path = os.path.join(patient_folder, filename)
 
     if not os.path.exists(file_path):
@@ -831,10 +831,10 @@ def save_excel(patient_id, filename):
     if not data:
         return jsonify({"message": "Немає даних для збереження"}), 400
 
-    try:  
+    try:
         file_path = os.path.join(
             "server_database/excel_files", str(patient_id), filename
-        ) 
+        )
         df = pd.DataFrame(data)
         df.to_excel(file_path, index=False, header=False, engine="openpyxl")
         return jsonify({"message": "Таблицю збережено успішно."})
@@ -867,9 +867,9 @@ def download_excel(patient_id, filename):
         return f"Помилка при створенні файлу: {str(e)}", 500
 
 
-@app.route("/download_patient_excel/<int:patient_id>/<filename>") 
+@app.route("/download_patient_excel/<int:patient_id>/<filename>")
 def download_patient_excel(patient_id, filename):
-    folder_path = os.path.join("server_database", "excel_files", str(patient_id)) 
+    folder_path = os.path.join("server_database", "excel_files", str(patient_id))
     safe_filename = secure_filename(filename)
 
     return send_from_directory(folder_path, safe_filename, as_attachment=True)
@@ -882,8 +882,8 @@ def create_new_excel(patient_id):
     """Создает новый пустой Excel-файл для пациента."""
     data = request.json
     filename = data.get("filename", "new_table.xlsx")
- 
-    patient_folder = os.path.join("server_database/excel_files/", str(patient_id)) 
+
+    patient_folder = os.path.join("server_database/excel_files/", str(patient_id))
     os.makedirs(patient_folder, exist_ok=True)
 
     file_path = os.path.join(patient_folder, filename)
@@ -1039,10 +1039,10 @@ def upload_document():
     flash("No file selected.", "error")
     return redirect(url_for("dashboard"))
 
- 
+
 @roles_required("admin", "doctor", "patient")
 def run_tkinter(patient_id):
-    patient_folder = os.path.join("server_database/excel_files/", str(patient_id)) 
+    patient_folder = os.path.join("server_database/excel_files/", str(patient_id))
 
     if not os.path.exists(patient_folder):
         return "Ошибка: папка пациента не найдена!", 400
