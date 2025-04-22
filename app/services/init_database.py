@@ -49,7 +49,7 @@ def create_tables(conn):
     cursor.execute(
         """
         CREATE TABLE users (
-            id COUNTER PRIMARY KEY, 
+            id COUNTER PRIMARY KEY,
             login TEXT(100),
             password TEXT(100),
             email TEXT(100),
@@ -67,7 +67,7 @@ def create_tables(conn):
     cursor.execute(
         """
         CREATE TABLE messages (
-            record_id COUNTER PRIMARY KEY, 
+            id COUNTER PRIMARY KEY,
             sender_id INTEGER,
             receiver_id INTEGER,
             message MEMO,
