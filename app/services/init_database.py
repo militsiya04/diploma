@@ -83,7 +83,7 @@ def create_tables(conn):
             id COUNTER PRIMARY KEY,
             user_id INTEGER,
             pulse INTEGER,
-            data_when_created DATETIME
+            date_when_created DATETIME
         )
     """
     )
@@ -94,7 +94,7 @@ def create_tables(conn):
             id COUNTER PRIMARY KEY,
             user_id INTEGER,
             pulse INTEGER,
-            data_when_created DATETIME
+            date_when_created DATETIME
         )
     """
     )
@@ -106,7 +106,7 @@ def create_tables(conn):
             user_id INTEGER,
             weight INTEGER,
             sugar TEXT(100),
-            data_when_created DATETIME
+            date_when_created DATETIME
         )
     """
     )
@@ -118,7 +118,7 @@ def create_tables(conn):
             user_id INTEGER,
             bpressure INTEGER,
             apressure INTEGER,
-            data_when_created DATETIME
+            date_when_created DATETIME
         )
     """
     )

@@ -452,56 +452,56 @@ def database():
                 cursor = conn.cursor()
 
                 if table_choice == "Pulse":
-                    required_columns = {"user_id", "pulse", "data_when_created"}
+                    required_columns = {"user_id", "pulse", "date_when_created"}
                     if not required_columns.issubset(df.columns):
-                        flash("❌ Pulse: потрібні стовпці: user_id, pulse, data_when_created", "error")
+                        flash("❌ Pulse: потрібні стовпці: user_id, pulse, date_when_created", "error")
                         return redirect(url_for("database"))
 
                     cursor.execute("DELETE FROM pulse")
                     for _, row in df.iterrows():
                         cursor.execute(
-                            "INSERT INTO pulse (user_id, pulse, data_when_created) VALUES (?, ?, ?)",
+                            "INSERT INTO pulse (user_id, pulse, date_when_created) VALUES (?, ?, ?)",
                             int(row["user_id"]),
                             int(row["pulse"]),
-                            str(row["data_when_created"]),
+                            str(row["date_when_created"]),
                         )
 
                 elif table_choice == "Dispersion":
-                    required_columns = {"user_id", "pulse", "data_when_created"}
+                    required_columns = {"user_id", "pulse", "date_when_created"}
                     if not required_columns.issubset(df.columns):
                         flash(
-                            "❌ Dispersion: потрібні стовпці: user_id, pulse, data_when_created", "error"
+                            "❌ Dispersion: потрібні стовпці: user_id, pulse, date_when_created", "error"
                         )
                         return redirect(url_for("database"))
 
                     cursor.execute("DELETE FROM dispersion")
                     for _, row in df.iterrows():
                         cursor.execute(
-                            "INSERT INTO dispersion (user_id, pulse, data_when_created) VALUES (?, ?, ?)",
+                            "INSERT INTO dispersion (user_id, pulse, date_when_created) VALUES (?, ?, ?)",
                             int(row["user_id"]),
                             int(row["pulse"]),
-                            str(row["data_when_created"]),
+                            str(row["date_when_created"]),
                         )
                 elif table_choice == "WaS":
-                    required_columns = {"user_id", "weight", "sugar", "data_when_created"}
+                    required_columns = {"user_id", "weight", "sugar", "date_when_created"}
                     if not required_columns.issubset(df.columns):
-                        flash("❌ WaS: потрібні стовпці: user_id, weight, sugar, data_when_created", "error")
+                        flash("❌ WaS: потрібні стовпці: user_id, weight, sugar, date_when_created", "error")
                         return redirect(url_for("database"))
 
                     cursor.execute("DELETE FROM WaS")
                     for _, row in df.iterrows():
                         cursor.execute(
-                            "INSERT INTO WaS (user_id, weight, sugar, data_when_created) VALUES (?, ?, ?, ?)",
+                            "INSERT INTO WaS (user_id, weight, sugar, date_when_created) VALUES (?, ?, ?, ?)",
                             int(row["user_id"]),
                             float(row["weight"]),
                             float(row["sugar"]),
-                            str(row["data_when_created"]),
+                            str(row["date_when_created"]),
                         )
                 elif table_choice == "Pressure":
-                    required_columns = {"user_id", "bpressure", "apressure", "data_when_created"}
+                    required_columns = {"user_id", "bpressure", "apressure", "date_when_created"}
                     if not required_columns.issubset(df.columns.str.lower()):
                         flash(
-                            "❌ Pressure: потрібні стовпці: user_id, bpressure, apressure, data_when_created",
+                            "❌ Pressure: потрібні стовпці: user_id, bpressure, apressure, date_when_created",
                             "error",
                         )
                         return redirect(url_for("database"))
@@ -509,11 +509,11 @@ def database():
                     cursor.execute("DELETE FROM pressure")
                     for _, row in df.iterrows():
                         cursor.execute(
-                            "INSERT INTO pressure (user_id, bpressure, apressure, data_when_created) VALUES (?, ?, ?, ?)",
+                            "INSERT INTO pressure (user_id, bpressure, apressure, date_when_created) VALUES (?, ?, ?, ?)",
                             int(row["user_id"]),
                             int(row["bpressure"]),
                             int(row["apressure"]),
-                            str(row["data_when_created"]),
+                            str(row["date_when_created"]),
                         )
 
                 conn.commit()
