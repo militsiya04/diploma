@@ -866,7 +866,8 @@ def download_excel(patient_id, filename):
     except Exception as e:
         return f"Помилка при створенні файлу: {str(e)}", 500
 
-@login_required_with_timeout() 
+
+@login_required_with_timeout()
 @roles_required("admin", "doctor", "patient")
 @app.route("/download_patient_excel/<int:patient_id>/<filename>")
 def download_patient_excel(patient_id, filename):
@@ -1040,8 +1041,9 @@ def upload_document():
     flash("No file selected.", "error")
     return redirect(url_for("dashboard"))
 
+
 @app.route("/run-tkinter/<patient_id>", methods=["POST"])
-@login_required_with_timeout() 
+@login_required_with_timeout()
 @roles_required("admin", "doctor", "patient")
 def run_tkinter(patient_id):
     patient_folder = os.path.join("server_database/excel_files/", str(patient_id))
