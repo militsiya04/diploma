@@ -49,7 +49,7 @@ def create_tables(conn):
     cursor.execute(
         """
         CREATE TABLE users (
-            id COUNTER PRIMARY KEY,
+            id COUNTER PRIMARY KEY, 
             login TEXT(100),
             password TEXT(100),
             email TEXT(100),
@@ -67,7 +67,7 @@ def create_tables(conn):
     cursor.execute(
         """
         CREATE TABLE messages (
-            id COUNTER PRIMARY KEY,
+            record_id COUNTER PRIMARY KEY, 
             sender_id INTEGER,
             receiver_id INTEGER,
             message MEMO,
@@ -80,7 +80,8 @@ def create_tables(conn):
     cursor.execute(
         """
         CREATE TABLE pulse (
-            id COUNTER PRIMARY KEY,
+            record_id COUNTER PRIMARY KEY,
+            id INTEGER,
             pulse INTEGER,
             data DATETIME
         )
@@ -90,7 +91,8 @@ def create_tables(conn):
     cursor.execute(
         """
         CREATE TABLE dispersion (
-            id COUNTER PRIMARY KEY,
+            record_id COUNTER PRIMARY KEY,
+            id INTEGER,
             pulse INTEGER,
             data DATETIME
         )
@@ -100,7 +102,8 @@ def create_tables(conn):
     cursor.execute(
         """
         CREATE TABLE WaS (
-            id COUNTER PRIMARY KEY,
+            record_id COUNTER PRIMARY KEY,
+            id INTEGER,
             weight INTEGER,
             sugar TEXT(100)
         )
@@ -110,7 +113,8 @@ def create_tables(conn):
     cursor.execute(
         """
         CREATE TABLE pressure (
-            id COUNTER PRIMARY KEY,
+            record_id COUNTER PRIMARY KEY,
+            id INTEGER,
             bpressure INTEGER,
             apressure INTEGER
         )
