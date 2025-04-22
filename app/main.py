@@ -35,6 +35,7 @@ from services.captcha_generator import generate_captcha_image, generate_captcha_
 from services.document_reader import extract_text_from_docx, extract_text_from_pdf
 from services.email_otp_service import configure_mail, send_otp_email
 from services.init_database import get_db_connection, init_database
+from services.otp_checking import store_otp, validate_otp
 from services.send_sms import send_sms
 from utils import (
     allowed_file,
@@ -46,8 +47,6 @@ from utils import (
     roles_required,
 )
 from werkzeug.utils import secure_filename
-
-from app.services.otp_checking import store_otp, validate_otp
 
 app = Flask(__name__)
 app.secret_key = "d9f9a8b7e5a4422aa1c8cf59d6d22e80"
