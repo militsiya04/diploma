@@ -178,6 +178,15 @@
 
         <!-- Вікно інформації -->
         <div class="mac-window">
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <ul class="flash-messages">
+                    {% for message in messages %}
+                        <li>{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
             <div class="mac-title-bar">
                 <div class="mac-buttons">
                     <div class="mac-button red"></div>

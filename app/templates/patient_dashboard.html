@@ -169,6 +169,17 @@
     </header>
 
     <div class="container">
+
+        {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div style="background-color: #d9f9f9; border: 1px solid #00a3a3; color: #004b4b; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+            {% for message in messages %}
+              <p>{{ message }}</p>
+            {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    
         <h2>{{ patient[0] }} {{ patient[1] }}</h2>
 
         {% if patient[4] %}

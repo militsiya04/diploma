@@ -148,8 +148,7 @@
             <input type="text" id="otp" name="otp" required>
             <input type="submit" value="Підтвердити">
         </form>
-
-        <p>Не отримали код? <a href="{{ url_for('authenticate_email') }}">Надіслати ще раз</a></p>
+ 
 
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
