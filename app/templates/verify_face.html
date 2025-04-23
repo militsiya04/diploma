@@ -66,14 +66,32 @@
             font-size: 14px;
             color: #777;
         }
+
+        .flash-messages {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 20px;
+            color: red;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
     <header>
-        <h1>Верифікація  </h1>
+        <h1>Верифікація</h1>
     </header>
 
     <div class="container">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <ul class="flash-messages">
+                    {% for message in messages %}
+                        <li>{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
         <h2>Подивіться у камеру та натисніть “Зробити фото”</h2>
         <video id="video" width="640" height="480" autoplay></video>
         <canvas id="canvas" width="640" height="480"></canvas>
@@ -85,7 +103,7 @@
     </div>
 
     <footer>
-        &copy; {{ current_year or 2025 }} Верифікація  
+        &copy; {{ current_year or 2025 }} Верифікація
     </footer>
 
     <script>

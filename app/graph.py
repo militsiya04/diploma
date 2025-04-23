@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import pyodbc
 from scipy.stats import ttest_rel
+import numpy as np
+from scipy import stats
 
 
 class ExcelGraphApp:
@@ -367,9 +369,41 @@ class ExcelGraphApp:
 
             avg_weight = df["weight"].mean()
             avg_sugar = df["parsed_sugar"].mean()
+
+            correlation = df["weight"].corr(df["parsed_sugar"])
+            correlation_text = f"Коефіцієнт кореляції: {correlation:.2f}\n" + (
+                "Є помірна або сильна кореляція між вагою і рівнем цукру."
+                if abs(correlation) >= 0.3
+                else "Кореляція між вагою і рівнем цукру слабка або відсутня."
+            )
+
+            try:
+                slope, _ = np.polyfit(df.index, df["weight"], 1)
+                if slope > 0.05:
+                    trend_text = "Тренд: вага має тенденцію до збільшення."
+                elif slope < -0.05:
+                    trend_text = "Тренд: вага має тенденцію до зменшення."
+                else:
+                    trend_text = "Тренд: зміни ваги не мають вираженої тенденції."
+            except Exception as e:
+                trend_text = f"Помилка при обчисленні тренду ваги: {e}"
+
+            try:
+                n = len(df["weight"])
+                s = df["weight"].std()
+                z = 1.96
+                margin_error = z * (s / np.sqrt(n))
+                ci_low = avg_weight - margin_error
+                ci_high = avg_weight + margin_error
+                ci_text = f"З імовірністю 95% вага пацієнта знаходиться в межах {ci_low:.2f} – {ci_high:.2f} кг."
+            except Exception as e:
+                ci_text = f"Помилка при обчисленні довірчого інтервалу: {e}"
+
             messagebox.showinfo(
-                "Середні значення",
-                f"Середня вага: {avg_weight:.2f} кг\nСередній рівень цукру: {avg_sugar:.2f} ммоль/л",
+                "Аналіз даних",
+                f"Середня вага: {avg_weight:.2f} кг\n"
+                f"Середній рівень цукру: {avg_sugar:.2f} ммоль/л\n\n"
+                f"{correlation_text}\n\n{trend_text}\n\n📏 {ci_text}",
             )
 
             if messagebox.askyesno(
