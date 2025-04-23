@@ -184,3 +184,6 @@ app/database
 
  
 app/server_database/
+
+rsa_private.pem
+rsa_public.pem
