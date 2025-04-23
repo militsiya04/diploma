@@ -124,7 +124,7 @@ def register_user(token: str):
         session_captcha = session.get("captcha", "").strip().lower()
 
         if user_captcha != session_captcha:
-            flash("❌ Невірна капча!", "error")
+            flash(" Невірна капча!", "error")
             return redirect(request.url)
 
         session.pop("captcha", None)
@@ -172,7 +172,7 @@ def register_user(token: str):
         conn.commit()
         conn.close()
 
-        flash(f"✅ Користувач з роллю '{role}' успішно зареєстрований!", "success")
+        flash(f"Користувач з роллю '{role}' успішно зареєстрований!", "success")
         return redirect(url_for("login"))
 
     return render_template("register.html", token=token, role=role)
@@ -366,7 +366,7 @@ def verify_face():
                 )
                 return redirect(url_for("redirect_user"))
             else:
-                flash("❌ Особа не збігається.", "error")
+                flash(" Особа не збігається.", "error")
                 return redirect(url_for("verify_face"))
 
         except Exception as e:
@@ -420,11 +420,11 @@ def generate_links():
     if request.method == "POST":
         selected_role = request.form.get("role")
         if selected_role not in allowed_roles:
-            flash("❌ Ви не маєте прав створювати користувачів з цією роллю!", "error")
+            flash(" Ви не маєте прав створювати користувачів з цією роллю!", "error")
             return redirect(url_for("generate_links"))
 
         generate_registration_link(conn, selected_role, hours_valid=24)
-        flash(f"✅ Посилання для {selected_role} згенеровано!", "success")
+        flash(f"Посилання для {selected_role} згенеровано!", "success")
         return redirect(url_for("generate_links"))
 
     cursor.execute(
@@ -475,7 +475,7 @@ def database():
                     required_columns = {"user_id", "pulse", "date_when_created"}
                     if not required_columns.issubset(df.columns):
                         flash(
-                            "❌ Pulse: потрібні стовпці: user_id, pulse, date_when_created",
+                            " Pulse: потрібні стовпці: user_id, pulse, date_when_created",
                             "error",
                         )
                         return redirect(url_for("database"))
@@ -493,7 +493,7 @@ def database():
                     required_columns = {"user_id", "pulse", "date_when_created"}
                     if not required_columns.issubset(df.columns):
                         flash(
-                            "❌ Dispersion: потрібні стовпці: user_id, pulse, date_when_created",
+                            " Dispersion: потрібні стовпці: user_id, pulse, date_when_created",
                             "error",
                         )
                         return redirect(url_for("database"))
@@ -515,7 +515,7 @@ def database():
                     }
                     if not required_columns.issubset(df.columns):
                         flash(
-                            "❌ WaS: потрібні стовпці: user_id, weight, sugar, date_when_created",
+                            " WaS: потрібні стовпці: user_id, weight, sugar, date_when_created",
                             "error",
                         )
                         return redirect(url_for("database"))
@@ -538,7 +538,7 @@ def database():
                     }
                     if not required_columns.issubset(df.columns.str.lower()):
                         flash(
-                            "❌ Pressure: потрібні стовпці: user_id, bpressure, apressure, date_when_created",
+                            " Pressure: потрібні стовпці: user_id, bpressure, apressure, date_when_created",
                             "error",
                         )
                         return redirect(url_for("database"))
@@ -555,10 +555,10 @@ def database():
 
                 conn.commit()
                 conn.close()
-                flash(f"✅ Дані імпортовано в таблицю {table_choice}!", "success")
+                flash(f"Дані імпортовано в таблицю {table_choice}!", "success")
 
             except Exception as e:
-                flash(f"❌ Помилка імпорту: {e}", "error")
+                flash(f" Помилка імпорту: {e}", "error")
 
     return render_template("database.html")
 
@@ -569,7 +569,7 @@ def database():
 def export_selected():
     table_name = request.args.get("table")
     if table_name not in ["Pulse", "Dispersion", "WaS", "Pressure"]:
-        flash("❌ Невідома таблиця для експорту.", "error")
+        flash(" Невідома таблиця для експорту.", "error")
         return redirect(url_for("database"))
 
     try:
@@ -590,7 +590,7 @@ def export_selected():
         )
 
     except Exception as e:
-        flash(f"❌ Помилка експорту: {e}", "error")
+        flash(f" Помилка експорту: {e}", "error")
         return redirect(url_for("database"))
 
 
