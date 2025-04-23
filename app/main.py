@@ -162,7 +162,7 @@ def register_user(token: str):
             os.makedirs(os.path.dirname(save_path), exist_ok=True)
             img.convert("RGB").save(save_path, "JPEG")
         else:
-            flash("⚠️ Фото має бути у форматі JPG!", "error")
+            flash(" Фото має бути у форматі JPG!", "error")
             conn.rollback()
             return redirect(request.url)
 

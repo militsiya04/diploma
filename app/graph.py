@@ -491,7 +491,7 @@ class ExcelGraphApp:
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("⚠️ Помилка: потрібно передати ID пацієнта.")
+        print(" Помилка: потрібно передати ID пацієнта.")
         sys.exit(1)
 
     patient_id = sys.argv[1]
