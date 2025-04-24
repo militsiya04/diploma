@@ -101,7 +101,7 @@
             <input type="text" id="search_user" placeholder="Введіть ім'я або прізвище..." onkeyup="filterUsers()" onclick="showDropdown()" autocomplete="off">
             <div class="dropdown" id="user_dropdown">
                 {% for user in users %}
-                    <div data-id="{{ user[0] }}" onclick="selectUser(this)">{{ user[1] }} {{ user[2] }}</div>
+                    <div data-id="{{ user['id'] }}" onclick="selectUser(this)">{{ user["first_name"] }} {{ user["surname"] }}</div>
                 {% endfor %}
             </div>
         </div>

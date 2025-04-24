@@ -4,11 +4,11 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import pyodbc
-from scipy.stats import ttest_rel
-import numpy as np
 from scipy import stats
+from scipy.stats import ttest_rel
 
 
 class ExcelGraphApp:

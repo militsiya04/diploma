@@ -6,7 +6,7 @@ import re
 import subprocess
 from datetime import datetime
 from io import BytesIO
-from flask import send_from_directory
+
 import cv2
 import numpy as np
 import pandas as pd
@@ -29,8 +29,6 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
-from werkzeug.utils import secure_filename
-
 from services.admin_setup import (
     check_and_generate_admin_link,
     generate_registration_link,
@@ -50,6 +48,15 @@ from utils import (
     login_required_with_timeout,
     roles_required,
 )
+from werkzeug.utils import secure_filename
+
+from services.crypto import (
+    decrypt_rsa,
+    encrypt_rsa,
+    load_private_key,
+    load_public_key,
+)
+from services.init_rsa_keys import generate_rsa_keys
 
 app = Flask(__name__)
 app.secret_key = "d9f9a8b7e5a4422aa1c8cf59d6d22e80"
@@ -71,6 +78,7 @@ os.makedirs(VERIFICATION_PHOTOS_FOLDER, exist_ok=True)
 configure_mail(app)
 init_database()
 check_and_generate_admin_link(get_db_connection())
+generate_rsa_keys()
 
 
 # ----- AUTHENTICATION CYCLE START -----
@@ -141,6 +149,12 @@ def register_user(token: str):
             )
             return redirect(request.url)
 
+        public_key = load_public_key()
+        encrypted_email = encrypt_rsa(email, public_key)
+        encrypted_phone = encrypt_rsa(phone, public_key)
+        encrypted_first_name = encrypt_rsa(first_name, public_key)
+        encrypted_surname = encrypt_rsa(surname, public_key)
+
         hashed_password = hash_password(password)
 
         cursor.execute(
@@ -148,14 +162,20 @@ def register_user(token: str):
             INSERT INTO users (position, login, password, email, phone, first_name, surname)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (role, login, hashed_password, email, phone, first_name, surname),
+            (
+                role,
+                login,
+                hashed_password,
+                encrypted_email,
+                encrypted_phone,
+                encrypted_first_name,
+                encrypted_surname,
+            ),
         )
 
-        # Отримати останній ID
         cursor.execute("SELECT @@IDENTITY")
         user_id = cursor.fetchone()[0]
 
-        # Збереження фото
         photo = request.files.get("photo")
         if photo and photo.filename.lower().endswith((".jpg", ".jpeg")):
             img = Image.open(photo)
@@ -200,18 +220,19 @@ def login():
         cursor = conn.cursor()
 
         cursor.execute(
-            "SELECT id, position, first_name, email, phone, password FROM users WHERE login=?",
+            "SELECT id, position, email, phone, password FROM users WHERE login=?",
             (login,),
         )
         user = cursor.fetchone()
         conn.close()
 
-        if user and check_password(password, user[5]):
+        if user and check_password(password, user[4]):
+            private_key = load_private_key()
+
             session["user_id"] = user[0]
             session["user_position"] = user[1]
-            session["user_name"] = user[2]
-            session["user_email"] = user[3]
-            session["user_phone"] = user[4]
+            session["user_email"] = decrypt_rsa(user[2], private_key)
+            session["user_phone"] = decrypt_rsa(user[3], private_key)
             return redirect(url_for("auth_options"))
         else:
             flash("Помилка: Неправильні дані!", "error")
@@ -612,16 +633,31 @@ def dashboard():
         return redirect(url_for("login"))
 
     cursor.execute(
-        "SELECT first_name, surname, phone, info, photo FROM users WHERE id = ?",
+        "SELECT first_name, surname, phone, info FROM users WHERE id = ?",
         (user_id,),
     )
     user = cursor.fetchone()
+    conn.close()
+
+    private_key = load_private_key()
+    first_name = decrypt_rsa(user[0], private_key)
+    surname = decrypt_rsa(user[1], private_key)
+    phone = decrypt_rsa(user[2], private_key)
+    info = decrypt_rsa(user[3], private_key) if user[3] else "N/A"
 
     patient_folder = os.path.join("server_database/excel_files/", str(user_id))
     files = os.listdir(patient_folder) if os.path.exists(patient_folder) else []
 
-    conn.close()
-    return render_template("dashboard.html", user=user, files=files)
+    return render_template(
+        "dashboard.html",
+        user={
+            "first_name": first_name,
+            "surname": surname,
+            "phone": phone,
+            "info": info,
+        },
+        files=files,
+    )
 
 
 @app.route("/download-info/<string:format>")
@@ -641,6 +677,14 @@ def download_info(format):
         flash("Інформація про користувача не знайдена.", "error")
         return redirect(url_for("dashboard"))
 
+    private_key = load_private_key()
+    first_name = decrypt_rsa(user[0], private_key)
+    surname = decrypt_rsa(user[1], private_key)
+    email = decrypt_rsa(user[2], private_key)
+    phone = decrypt_rsa(user[3], private_key)
+    position = user[4]
+    info = decrypt_rsa(user[5], private_key) if user[5] else "N/A"
+
     if format == "pdf":
         base_dir = os.path.dirname(os.path.abspath(__file__))
         font_path = os.path.join(base_dir, "static", "fonts", "free-sans.ttf")
@@ -651,12 +695,12 @@ def download_info(format):
         c.setFont("FreeSans", 12)
 
         c.drawString(100, 750, "Информация о пользователе")
-        c.drawString(100, 730, f"Имя: {user[0]}")
-        c.drawString(100, 710, f"Фамилия: {user[1]}")
-        c.drawString(100, 690, f"Email: {user[2]}")
-        c.drawString(100, 670, f"Телефон: {user[3]}")
-        c.drawString(100, 650, f"Должность: {user[4] or 'N/A'}")
-        c.drawString(100, 630, f"Информация: {user[5] or 'N/A'}")
+        c.drawString(100, 730, f"Имя: {first_name}")
+        c.drawString(100, 710, f"Фамилия: {surname}")
+        c.drawString(100, 690, f"Email: {email}")
+        c.drawString(100, 670, f"Телефон: {phone}")
+        c.drawString(100, 650, f"Должность: {position}")
+        c.drawString(100, 630, f"Информация: {info}")
 
         c.save()
         pdf_file.seek(0)
@@ -671,12 +715,12 @@ def download_info(format):
     elif format == "docx":
         doc = Document()
         doc.add_heading("Информация о пользователе", level=1)
-        doc.add_paragraph(f"Имя: {user[0]}")
-        doc.add_paragraph(f"Фамилия: {user[1]}")
-        doc.add_paragraph(f"Email: {user[2]}")
-        doc.add_paragraph(f"Телефон: {user[3]}")
-        doc.add_paragraph(f"Должность: {user[4] or 'N/A'}")
-        doc.add_paragraph(f"Информация: {user[5] or 'N/A'}")
+        doc.add_paragraph(f"Имя: {first_name}")
+        doc.add_paragraph(f"Фамилия: {surname}")
+        doc.add_paragraph(f"Email: {email}")
+        doc.add_paragraph(f"Телефон: {phone}")
+        doc.add_paragraph(f"Должность: {position}")
+        doc.add_paragraph(f"Информация: {info}")
 
         doc_file = BytesIO()
         doc.save(doc_file)
@@ -710,9 +754,21 @@ def inbox():
     """,
         (session["user_id"],),
     )
-    messages = cursor.fetchall()
-
+    raw_messages = cursor.fetchall()
     conn.close()
+
+    private_key = load_private_key()
+    messages = []
+    for m in raw_messages:
+        messages.append(
+            {
+                "id": m[0],
+                "first_name": decrypt_rsa(m[1], private_key),
+                "surname": decrypt_rsa(m[2], private_key),
+                "message": decrypt_rsa(m[3], private_key),
+                "sent_at": m[4],
+            }
+        )
 
     return render_template("inbox.html", messages=messages)
 
@@ -734,10 +790,22 @@ def outbox():
     """,
         (session["user_id"],),
     )
-    messages = cursor.fetchall()
-
-    cursor.close()
+    raw_messages = cursor.fetchall()
     conn.close()
+
+    private_key = load_private_key()
+    messages = []
+    for m in raw_messages:
+        messages.append(
+            {
+                "id": m[0],
+                "first_name": decrypt_rsa(m[1], private_key),
+                "surname": decrypt_rsa(m[2], private_key),
+                "message": decrypt_rsa(m[3], private_key),
+                "sent_at": m[4],
+            }
+        )
+
     return render_template("outbox.html", messages=messages)
 
 
@@ -753,10 +821,13 @@ def send_message():
         receiver_id = request.form["receiver_id"]
         message = request.form["message"]
 
+        public_key = load_public_key()
+        encrypted_message = encrypt_rsa(message, public_key)
+
         query = (
             "INSERT INTO messages (sender_id, receiver_id, message) VALUES (?, ?, ?)"
         )
-        cursor.execute(query, (sender_id, receiver_id, message))
+        cursor.execute(query, (sender_id, receiver_id, encrypted_message))
         conn.commit()
 
         cursor.close()
@@ -765,10 +836,20 @@ def send_message():
         return redirect(url_for("outbox"))
 
     cursor.execute("SELECT id, first_name, surname FROM users")
-    users = cursor.fetchall()
-
-    cursor.close()
+    users_raw = cursor.fetchall()
     conn.close()
+
+    private_key = load_private_key()
+    users = []
+    for u in users_raw:
+        users.append(
+            {
+                "id": u[0],
+                "first_name": decrypt_rsa(u[1], private_key),
+                "surname": decrypt_rsa(u[2], private_key),
+            }
+        )
+
     return render_template("send_message.html", users=users)
 
 
@@ -894,9 +975,8 @@ def create_new_excel(patient_id):
 
 @app.route("/calendar/<int:patient_id>", methods=["GET"])
 @login_required_with_timeout()
-@roles_required("admin", "doctor")
+@roles_required("admin", "doctor", "patient")
 def get_calendar(patient_id):
-    """Получает список событий пациента из базы Access."""
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -904,6 +984,7 @@ def get_calendar(patient_id):
         "SELECT id, title, start, end, description FROM calendar_events WHERE patient_id = ?",
         (patient_id,),
     )
+    print("💡 ДОСТУП РАЗРЕШЁН! session['user_id'] =", session.get("user_id"))
     events = cursor.fetchall()
     conn.close()
 
@@ -919,6 +1000,39 @@ def get_calendar(patient_id):
     ]
 
     return jsonify(formatted_events)
+
+
+@app.route("/calendar/<int:patient_id>", methods=["POST"])
+@login_required_with_timeout()
+@roles_required("admin", "doctor", "patient")
+def create_event(patient_id):
+    try:
+        data = request.get_json()
+        title = data.get("title")
+        description = data.get("description")
+        start_str = data.get("start")
+        end_str = data.get("end")
+
+        start = datetime.fromisoformat(start_str)
+        end = datetime.fromisoformat(end_str) if end_str else None
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            INSERT INTO calendar_events (patient_id, title, start, end, description)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (patient_id, title, start, end, description),
+        )
+        conn.commit()
+        conn.close()
+
+        return jsonify({"success": True}), 201
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/meddashboard", methods=["GET"])
@@ -943,14 +1057,26 @@ def meddashboard():
     params = []
 
     if search_query:
-        query += " AND first_name LIKE '*' || ? || '*'"
-        params.append(search_query)
+        flash("Пошук недоступний через шифрування даних", "error")
 
     query += f" ORDER BY {sort_by} {sort_order}"
 
     cursor.execute(query, params)
-    patients = cursor.fetchall()
+    raw_patients = cursor.fetchall()
     conn.close()
+
+    private_key = load_private_key()
+    patients = []
+    for row in raw_patients:
+        patients.append(
+            {
+                "id": row[0],
+                "first_name": decrypt_rsa(row[1], private_key),
+                "surname": decrypt_rsa(row[2], private_key),
+                "phone": decrypt_rsa(row[3], private_key),
+                "email": decrypt_rsa(row[4], private_key),
+            }
+        )
 
     return render_template(
         "meddashboard.html",
@@ -980,12 +1106,21 @@ def patient_dashboard(patient_id):
             flash("Пацієнта не знайдено.", "error")
             return redirect(url_for("meddashboard"))
 
+        private_key = load_private_key()
+        decrypted_patient = {
+            "first_name": decrypt_rsa(patient[0], private_key),
+            "surname": decrypt_rsa(patient[1], private_key),
+            "phone": decrypt_rsa(patient[2], private_key),
+            "info": decrypt_rsa(patient[3], private_key) if patient[3] else None,
+            "photo": patient[4],
+        }
+
         patient_folder = os.path.join("server_database/excel_files", str(patient_id))
         files = os.listdir(patient_folder) if os.path.exists(patient_folder) else []
 
         return render_template(
             "patient_dashboard.html",
-            patient=patient,
+            patient=decrypted_patient,
             patient_id=patient_id,
             files=files,
         )
@@ -995,12 +1130,12 @@ def patient_dashboard(patient_id):
         return redirect(url_for("dashboard"))
 
 
-@app.route("/upload-document", methods=["POST"])
+@app.route("/upload-document/<int:patient_id>", methods=["POST"])
 @login_required_with_timeout()
 @roles_required("admin", "doctor")
-def upload_document():
+def upload_document(patient_id):
     file = request.files["file"]
-    if file:
+    if file and patient_id:
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
         file.save(filepath)
@@ -1011,13 +1146,17 @@ def upload_document():
             text = extract_text_from_docx(filepath)
         else:
             flash("Непідтримуваний формат файлу.", "error")
-            return redirect(url_for("dashboard"))
+            return redirect(url_for("patient_dashboard", patient_id=patient_id))
 
         try:
+            public_key = load_public_key()
+            encrypted_text = encrypt_rsa(text, public_key)
+
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute(
-                "UPDATE users SET info = ? WHERE id = ?", (text, session["user_id"])
+                "UPDATE users SET info = ? WHERE id = ?",
+                (encrypted_text, patient_id),
             )
             conn.commit()
         except Exception as e:
@@ -1026,9 +1165,9 @@ def upload_document():
             conn.close()
 
         flash("Документ завантажено та інформацію успішно оновлено.", "success")
-        return redirect(url_for("dashboard"))
+        return redirect(url_for("patient_dashboard", patient_id=patient_id))
 
-    flash("Файл не вибрано.", "error")
+    flash("Файл не вибрано або ID пацієнта відсутній.", "error")
     return redirect(url_for("dashboard"))
 
 
