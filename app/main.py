@@ -984,7 +984,7 @@ def get_calendar(patient_id):
         "SELECT id, title, start, end, description FROM calendar_events WHERE patient_id = ?",
         (patient_id,),
     )
-    print("💡 ДОСТУП РАЗРЕШЁН! session['user_id'] =", session.get("user_id"))
+    print(" ДОСТУП РАЗРЕШЁН! session['user_id'] =", session.get("user_id"))
     events = cursor.fetchall()
     conn.close()
 
