@@ -4,6 +4,7 @@ import os
 import random
 import re
 import subprocess
+import sys
 from datetime import datetime
 from io import BytesIO
 
@@ -1180,7 +1181,7 @@ def run_tkinter(patient_id):
     if not os.path.exists(patient_folder):
         return "Помилка: папку пацієнта не знайдено!", 400
 
-    subprocess.Popen(["python", "graph.py", str(patient_id)], start_new_session=True)
+    subprocess.Popen([sys.executable, "graph.py", str(patient_id)], start_new_session=True)
     return "График!", 200
 
 
