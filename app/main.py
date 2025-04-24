@@ -50,13 +50,13 @@ from utils import (
 )
 from werkzeug.utils import secure_filename
 
-from app.services.crypto import (
+from services.crypto import (
     decrypt_rsa,
     encrypt_rsa,
     load_private_key,
     load_public_key,
 )
-from app.services.init_rsa_keys import generate_rsa_keys
+from services.init_rsa_keys import generate_rsa_keys
 
 app = Flask(__name__)
 app.secret_key = "d9f9a8b7e5a4422aa1c8cf59d6d22e80"
@@ -226,7 +226,7 @@ def login():
         user = cursor.fetchone()
         conn.close()
 
-        if user and check_password(password, user[5]):
+        if user and check_password(password, user[4]):
             private_key = load_private_key()
 
             session["user_id"] = user[0]
@@ -975,9 +975,8 @@ def create_new_excel(patient_id):
 
 @app.route("/calendar/<int:patient_id>", methods=["GET"])
 @login_required_with_timeout()
-@roles_required("admin", "doctor")
+@roles_required("admin", "doctor", "patient")
 def get_calendar(patient_id):
-    """Получает список событий пациента из базы Access."""
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -985,6 +984,7 @@ def get_calendar(patient_id):
         "SELECT id, title, start, end, description FROM calendar_events WHERE patient_id = ?",
         (patient_id,),
     )
+    print("💡 ДОСТУП РАЗРЕШЁН! session['user_id'] =", session.get("user_id"))
     events = cursor.fetchall()
     conn.close()
 
@@ -1000,6 +1000,39 @@ def get_calendar(patient_id):
     ]
 
     return jsonify(formatted_events)
+
+
+@app.route("/calendar/<int:patient_id>", methods=["POST"])
+@login_required_with_timeout()
+@roles_required("admin", "doctor", "patient")
+def create_event(patient_id):
+    try:
+        data = request.get_json()
+        title = data.get("title")
+        description = data.get("description")
+        start_str = data.get("start")
+        end_str = data.get("end")
+
+        start = datetime.fromisoformat(start_str)
+        end = datetime.fromisoformat(end_str) if end_str else None
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            INSERT INTO calendar_events (patient_id, title, start, end, description)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (patient_id, title, start, end, description),
+        )
+        conn.commit()
+        conn.close()
+
+        return jsonify({"success": True}), 201
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/meddashboard", methods=["GET"])
@@ -1097,12 +1130,12 @@ def patient_dashboard(patient_id):
         return redirect(url_for("dashboard"))
 
 
-@app.route("/upload-document", methods=["POST"])
+@app.route("/upload-document/<int:patient_id>", methods=["POST"])
 @login_required_with_timeout()
 @roles_required("admin", "doctor")
-def upload_document():
+def upload_document(patient_id):
     file = request.files["file"]
-    if file:
+    if file and patient_id:
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
         file.save(filepath)
@@ -1113,7 +1146,7 @@ def upload_document():
             text = extract_text_from_docx(filepath)
         else:
             flash("Непідтримуваний формат файлу.", "error")
-            return redirect(url_for("dashboard"))
+            return redirect(url_for("patient_dashboard", patient_id=patient_id))
 
         try:
             public_key = load_public_key()
@@ -1123,7 +1156,7 @@ def upload_document():
             cursor = conn.cursor()
             cursor.execute(
                 "UPDATE users SET info = ? WHERE id = ?",
-                (encrypted_text, session["user_id"]),
+                (encrypted_text, patient_id),
             )
             conn.commit()
         except Exception as e:
@@ -1132,9 +1165,9 @@ def upload_document():
             conn.close()
 
         flash("Документ завантажено та інформацію успішно оновлено.", "success")
-        return redirect(url_for("dashboard"))
+        return redirect(url_for("patient_dashboard", patient_id=patient_id))
 
-    flash("Файл не вибрано.", "error")
+    flash("Файл не вибрано або ID пацієнта відсутній.", "error")
     return redirect(url_for("dashboard"))
 
 

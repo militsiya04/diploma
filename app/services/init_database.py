@@ -50,14 +50,14 @@ def create_tables(conn):
         """
         CREATE TABLE users (
             id COUNTER PRIMARY KEY,
-            login TEXT(100),
-            password TEXT(100),
-            email TEXT(100),
-            phone TEXT(100),
-            first_name TEXT(100),
-            surname TEXT(100),
-            photo TEXT(100),
-            position TEXT(100),
+            login MEMO,
+            password MEMO,
+            email MEMO,
+            phone MEMO,
+            first_name MEMO,
+            surname MEMO,
+            photo MEMO,
+            position MEMO,
             info MEMO,
             age INTEGER
         )

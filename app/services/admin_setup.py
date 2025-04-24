@@ -36,7 +36,7 @@ def generate_registration_link(
     db_connection.commit()
 
     full_url: str = f"{base_url}/register/{token}"
-    print(f"[INFO] 🔐 Посилання для створення {role} (дійсне {hours_valid} год.):")
+    print(f"[INFO]  Посилання для створення {role} (дійсне {hours_valid} год.):")
     print(full_url)
     return full_url
 

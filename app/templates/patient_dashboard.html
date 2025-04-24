@@ -180,7 +180,7 @@
       {% endif %}
     {% endwith %}
     
-        <h2>{{ patient[0] }} {{ patient[1] }}</h2>
+        <h2>{{ patient["first_name"] }} {{ patient["surname"] }}</h2>
 
         {% if patient[4] %}
             <img src="{{ url_for('static', filename='photos/' + patient[4]) }}" alt="Фото пацієнта" class="user-photo">
@@ -188,10 +188,10 @@
             <div class="placeholder-photo">👤</div>
         {% endif %}
 
-        <p><b>Телефон:</b> {{ patient[2] }}</p>
-        <p><b>Інформація:</b> {{ patient[3] }}</p>
+        <p><b>Телефон:</b> {{ patient["phone"] }}</p>
+        <p><b>Інформація:</b> {{ patient["info"] }}</p>
 
-        <form action="{{ url_for('upload_document') }}" method="POST" enctype="multipart/form-data">
+        <form action="{{ url_for('upload_document', patient_id=patient_id) }}" method="POST" enctype="multipart/form-data">
             <label for="file">Завантажити документ:</label>
             <input type="file" name="file" id="file" accept=".pdf,.doc,.docx">
             <button type="submit">Завантажити</button>
