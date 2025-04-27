@@ -4,6 +4,7 @@ import os
 import random
 import re
 import subprocess
+import sys
 from datetime import datetime
 from io import BytesIO
 
@@ -1116,6 +1117,7 @@ def get_calendar(patient_id):
         "SELECT id, title, start, end, description FROM calendar_events WHERE patient_id = ?",
         (patient_id,),
     )
+    print("💡 ДОСТУП РАЗРЕШЁН! session['user_id'] =", session.get("user_id"))
     print(" ДОСТУП РАЗРЕШЁН! session['user_id'] =", session.get("user_id"))
     events = cursor.fetchall()
     conn.close()
@@ -1312,7 +1314,7 @@ def run_tkinter(patient_id):
     if not os.path.exists(patient_folder):
         return "Помилка: папку пацієнта не знайдено!", 400
 
-    subprocess.Popen(["python", "graph.py", str(patient_id)], start_new_session=True)
+    subprocess.Popen([sys.executable, "graph.py", str(patient_id)], start_new_session=True)
     return "График!", 200
 
 
