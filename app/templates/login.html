@@ -52,7 +52,8 @@
     }
 
     input[type="submit"],
-    .register-btn {
+    .register-btn,
+    .forgot-password-btn {
       background-color: #005C5C;
       color: white;
       border: none;
@@ -67,7 +68,8 @@
     }
 
     input[type="submit"]:hover,
-    .register-btn:hover {
+    .register-btn:hover,
+    .forgot-password-btn:hover {
       background-color: #007D7D;
     }
 
@@ -139,6 +141,7 @@
 
     <input type="submit" value="Login"><br><br>
 
+    <a href="{{ url_for('forgot_password') }}" class="forgot-password-btn">Скидання пароля</a>
   </form>
 
   {% with messages = get_flashed_messages(with_categories=true) %}

@@ -424,6 +424,96 @@ def logout():
 # ----- AUTHENTICATION CYCLE END -----
 
 
+@app.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "POST":
+        login = request.form["login"]
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, email FROM users WHERE login = ?", (login,))
+        user = cursor.fetchone()
+        conn.close()
+
+        if user:
+            user_id, encrypted_email = user
+            private_key = load_private_key()
+            email = decrypt_rsa(encrypted_email, private_key)
+
+            otp_code = "{:06d}".format(random.randint(0, 999999))
+
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            store_otp(cursor, user_id, otp_code, "reset_password")
+            conn.commit()
+            conn.close()
+
+            send_otp_email(email, otp_code)
+
+            session["reset_user_id"] = user_id
+            flash(
+                "Код для відновлення пароля надіслано на вашу електронну пошту.",
+                "success",
+            )
+            return redirect(url_for("verify_reset_otp"))
+        else:
+            flash("Користувача з таким логіном не знайдено.", "error")
+
+    return render_template("forgot_password.html")
+
+
+@app.route("/verify-reset-otp", methods=["GET", "POST"])
+def verify_reset_otp():
+    if "reset_user_id" not in session:
+        return redirect(url_for("forgot_password"))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    if request.method == "POST":
+        entered_otp = request.form["otp"]
+        if validate_otp(
+            cursor, session["reset_user_id"], entered_otp, "reset_password"
+        ):
+            conn.commit()
+            conn.close()
+            session["otp_verified_for_reset"] = True
+            return redirect(url_for("reset_password"))
+        else:
+            flash("Недійсний або прострочений OTP. Спробуйте ще раз.", "error")
+
+    conn.close()
+    return render_template("verify_reset_otp.html")
+
+
+@app.route("/reset-password", methods=["GET", "POST"])
+def reset_password():
+    if "reset_user_id" not in session or "otp_verified_for_reset" not in session:
+        return redirect(url_for("forgot_password"))
+
+    if request.method == "POST":
+        new_password = request.form["password"]
+        hashed_password = hash_password(new_password)
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE users SET password = ? WHERE id = ?",
+            (hashed_password, session["reset_user_id"]),
+        )
+        conn.commit()
+        conn.close()
+
+        # Очищаем сессию после сброса
+        session.pop("reset_user_id", None)
+        session.pop("otp_verified_for_reset", None)
+
+        flash("Пароль успішно змінено! Увійдіть з новим паролем.", "success")
+        return redirect(url_for("login"))
+
+    return render_template("reset_password.html")
+
+
 @app.route("/generate-links", methods=["GET", "POST"])
 @login_required_with_timeout()
 @roles_required("admin", "doctor")
@@ -493,41 +583,61 @@ def database():
                 conn = get_db_connection()
                 cursor = conn.cursor()
 
+                # Функция для проверки существования user_id
+                def user_exists(user_id):
+                    cursor.execute("SELECT 1 FROM users WHERE id = ?", (user_id,))
+                    return cursor.fetchone() is not None
+
+                missing_user_ids = set()  # Сюда будем складывать пропущенные user_id
+
                 if table_choice == "Pulse":
                     required_columns = {"user_id", "pulse", "date_when_created"}
                     if not required_columns.issubset(df.columns):
                         flash(
-                            " Pulse: потрібні стовпці: user_id, pulse, date_when_created",
+                            "Pulse: потрібні стовпці: user_id, pulse, date_when_created",
                             "error",
                         )
                         return redirect(url_for("database"))
 
                     cursor.execute("DELETE FROM pulse")
                     for _, row in df.iterrows():
-                        cursor.execute(
-                            "INSERT INTO pulse (user_id, pulse, date_when_created) VALUES (?, ?, ?)",
-                            int(row["user_id"]),
-                            int(row["pulse"]),
-                            str(row["date_when_created"]),
-                        )
+                        user_id = int(row["user_id"])
+                        if user_exists(user_id):
+                            cursor.execute(
+                                "INSERT INTO pulse (user_id, pulse, date_when_created) VALUES (?, ?, ?)",
+                                (
+                                    user_id,
+                                    int(row["pulse"]),
+                                    str(row["date_when_created"]),
+                                ),
+                            )
+                        else:
+                            missing_user_ids.add(user_id)
 
                 elif table_choice == "Dispersion":
                     required_columns = {"user_id", "pulse", "date_when_created"}
                     if not required_columns.issubset(df.columns):
                         flash(
-                            " Dispersion: потрібні стовпці: user_id, pulse, date_when_created",
+                            "Dispersion: потрібні стовпці: user_id, pulse, date_when_created",
                             "error",
                         )
                         return redirect(url_for("database"))
 
                     cursor.execute("DELETE FROM dispersion")
                     for _, row in df.iterrows():
-                        cursor.execute(
-                            "INSERT INTO dispersion (user_id, pulse, date_when_created) VALUES (?, ?, ?)",
-                            int(row["user_id"]),
-                            int(row["pulse"]),
-                            str(row["date_when_created"]),
-                        )
+                        user_id = int(row["user_id"])
+                        if user_exists(user_id):
+                            cursor.execute(
+                                "INSERT INTO dispersion (user_id, pulse, date_when_created) VALUES (?, ?, ?)",
+                                (
+                                    user_id,
+                                    int(row["pulse"]),
+                                    str(row["date_when_created"]),
+                                ),
+                            )
+                        else:
+                            missing_user_ids.add(user_id)
+
                 elif table_choice == "WaS":
                     required_columns = {
                         "user_id",
@@ -537,20 +647,27 @@ def database():
                     }
                     if not required_columns.issubset(df.columns):
                         flash(
-                            " WaS: потрібні стовпці: user_id, weight, sugar, date_when_created",
+                            "WaS: потрібні стовпці: user_id, weight, sugar, date_when_created",
                             "error",
                         )
                         return redirect(url_for("database"))
 
                     cursor.execute("DELETE FROM WaS")
                     for _, row in df.iterrows():
-                        cursor.execute(
-                            "INSERT INTO WaS (user_id, weight, sugar, date_when_created) VALUES (?, ?, ?, ?)",
-                            int(row["user_id"]),
-                            float(row["weight"]),
-                            float(row["sugar"]),
-                            str(row["date_when_created"]),
-                        )
+                        user_id = int(row["user_id"])
+                        if user_exists(user_id):
+                            cursor.execute(
+                                "INSERT INTO WaS (user_id, weight, sugar, date_when_created) VALUES (?, ?, ?, ?)",
+                                (
+                                    user_id,
+                                    float(row["weight"]),
+                                    float(row["sugar"]),
+                                    str(row["date_when_created"]),
+                                ),
+                            )
+                        else:
+                            missing_user_ids.add(user_id)
+
                 elif table_choice == "Pressure":
                     required_columns = {
                         "user_id",
@@ -558,29 +675,44 @@ def database():
                         "apressure",
                         "date_when_created",
                     }
-                    if not required_columns.issubset(df.columns.str.lower()):
+                    if not required_columns.issubset(df.columns):
                         flash(
-                            " Pressure: потрібні стовпці: user_id, bpressure, apressure, date_when_created",
+                            "Pressure: потрібні стовпці: user_id, bpressure, apressure, date_when_created",
                             "error",
                         )
                         return redirect(url_for("database"))
 
                     cursor.execute("DELETE FROM pressure")
                     for _, row in df.iterrows():
-                        cursor.execute(
-                            "INSERT INTO pressure (user_id, bpressure, apressure, date_when_created) VALUES (?, ?, ?, ?)",
-                            int(row["user_id"]),
-                            int(row["bpressure"]),
-                            int(row["apressure"]),
-                            str(row["date_when_created"]),
-                        )
+                        user_id = int(row["user_id"])
+                        if user_exists(user_id):
+                            cursor.execute(
+                                "INSERT INTO pressure (user_id, bpressure, apressure, date_when_created) VALUES (?, ?, ?, ?)",
+                                (
+                                    user_id,
+                                    int(row["bpressure"]),
+                                    int(row["apressure"]),
+                                    str(row["date_when_created"]),
+                                ),
+                            )
+                        else:
+                            missing_user_ids.add(user_id)
 
                 conn.commit()
                 conn.close()
-                flash(f"Дані імпортовано в таблицю {table_choice}!", "success")
+
+                if missing_user_ids:
+                    missing_ids_str = ", ".join(map(str, sorted(missing_user_ids)))
+                    flash(
+                        f"Дані імпортовано в таблицю {table_choice}, але наступні user_id не знайдено: {missing_ids_str}",
+                        "warning",
+                    )
+                else:
+                    flash(f"Дані імпортовано в таблицю {table_choice}!", "success")
 
             except Exception as e:
-                flash(f" Помилка імпорту: {e}", "error")
+                flash(f"Помилка при обробці файлу: {str(e)}", "error")
+                return redirect(url_for("database"))
 
     return render_template("database.html")
 
