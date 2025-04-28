@@ -425,6 +425,116 @@ def logout():
 # ----- AUTHENTICATION CYCLE END -----
 
 
+@app.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "POST":
+        login = request.form["login"]
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM users WHERE login = ?", (login,))
+        user = cursor.fetchone()
+        conn.close()
+
+        if user:
+            user_id = user[0]
+            session["reset_user_id"] = user_id
+            return redirect(url_for("verify_reset_face"))
+        else:
+            flash("Користувача з таким логіном не знайдено.", "error")
+
+    return render_template("forgot_password.html")
+
+
+@app.route("/verify-reset-face", methods=["GET", "POST"])
+def verify_reset_face():
+    if "reset_user_id" not in session:
+        return redirect(url_for("forgot_password"))
+
+    user_id = session["reset_user_id"]
+
+    if request.method == "POST":
+        photo_data = request.form.get("photo")
+        if not photo_data:
+            flash("Фото не отримано", "error")
+            return redirect(url_for("verify_reset_face"))
+
+        img_str = re.search(r"base64,(.*)", photo_data).group(1)
+        img_bytes = base64.b64decode(img_str)
+        np_arr = np.frombuffer(img_bytes, np.uint8)
+        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
+        input_photo_path = (
+            f"server_database/verification_photos/temp_reset_{user_id}.jpg"
+        )
+        reference_photo_path = f"server_database/verification_photos/{user_id}.jpg"
+        cv2.imwrite(input_photo_path, frame)
+
+        if not os.path.exists(reference_photo_path):
+            flash("Фото користувача не знайдено!", "error")
+            os.remove(input_photo_path)
+            return redirect(url_for("verify_reset_face"))
+
+        try:
+            result = DeepFace.verify(
+                img1_path=input_photo_path,
+                img2_path=reference_photo_path,
+                enforce_detection=True,
+            )
+            os.remove(input_photo_path)
+
+            if result["verified"]:
+                # Генерируем токен для сброса пароля
+                reset_token = secrets.token_urlsafe(32)
+                session["reset_token"] = reset_token
+
+                # Редиректим на страницу сброса пароля с токеном в URL
+                return redirect(url_for("reset_password", token=reset_token))
+            else:
+                flash("Обличчя не співпадає.", "error")
+                return redirect(url_for("verify_reset_face"))
+
+        except Exception as e:
+            flash(f"Помилка перевірки обличчя: {str(e)}", "error")
+            if os.path.exists(input_photo_path):
+                os.remove(input_photo_path)
+            return redirect(url_for("verify_reset_face"))
+
+    return render_template("verify_reset_face.html")
+
+
+@app.route("/reset-password", methods=["GET", "POST"])
+def reset_password():
+    token = request.args.get("token")
+
+    # Проверяем токен
+    if not token or session.get("reset_token") != token:
+        flash("Доступ заборонено.", "error")
+        return redirect(url_for("forgot_password"))
+
+    if request.method == "POST":
+        new_password = request.form["password"]
+        hashed_password = hash_password(new_password)
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE users SET password = ? WHERE id = ?",
+            (hashed_password, session["reset_user_id"]),
+        )
+        conn.commit()
+        conn.close()
+
+        # Очищаем всё после смены пароля
+        session.pop("reset_user_id", None)
+        session.pop("reset_token", None)
+
+        flash("Пароль успішно змінено! Увійдіть з новим паролем.", "success")
+        return redirect(url_for("login"))
+
+    return render_template("reset_password.html")
+
+
 @app.route("/generate-links", methods=["GET", "POST"])
 @login_required_with_timeout()
 @roles_required("admin", "doctor")
@@ -494,41 +604,27 @@ def database():
                 conn = get_db_connection()
                 cursor = conn.cursor()
 
+                cursor.execute("SELECT id FROM users")
+                existing_user_ids = {row[0] for row in cursor.fetchall()}
+
                 if table_choice == "Pulse":
                     required_columns = {"user_id", "pulse", "date_when_created"}
                     if not required_columns.issubset(df.columns):
                         flash(
-                            " Pulse: потрібні стовпці: user_id, pulse, date_when_created",
+                            "Pulse: потрібні стовпці: user_id, pulse, date_when_created",
                             "error",
                         )
                         return redirect(url_for("database"))
-
-                    cursor.execute("DELETE FROM pulse")
-                    for _, row in df.iterrows():
-                        cursor.execute(
-                            "INSERT INTO pulse (user_id, pulse, date_when_created) VALUES (?, ?, ?)",
-                            int(row["user_id"]),
-                            int(row["pulse"]),
-                            str(row["date_when_created"]),
-                        )
 
                 elif table_choice == "Dispersion":
                     required_columns = {"user_id", "pulse", "date_when_created"}
                     if not required_columns.issubset(df.columns):
                         flash(
-                            " Dispersion: потрібні стовпці: user_id, pulse, date_when_created",
+                            "Dispersion: потрібні стовпці: user_id, pulse, date_when_created",
                             "error",
                         )
                         return redirect(url_for("database"))
 
-                    cursor.execute("DELETE FROM dispersion")
-                    for _, row in df.iterrows():
-                        cursor.execute(
-                            "INSERT INTO dispersion (user_id, pulse, date_when_created) VALUES (?, ?, ?)",
-                            int(row["user_id"]),
-                            int(row["pulse"]),
-                            str(row["date_when_created"]),
-                        )
                 elif table_choice == "WaS":
                     required_columns = {
                         "user_id",
@@ -538,20 +634,11 @@ def database():
                     }
                     if not required_columns.issubset(df.columns):
                         flash(
-                            " WaS: потрібні стовпці: user_id, weight, sugar, date_when_created",
+                            "WaS: потрібні стовпці: user_id, weight, sugar, date_when_created",
                             "error",
                         )
                         return redirect(url_for("database"))
 
-                    cursor.execute("DELETE FROM WaS")
-                    for _, row in df.iterrows():
-                        cursor.execute(
-                            "INSERT INTO WaS (user_id, weight, sugar, date_when_created) VALUES (?, ?, ?, ?)",
-                            int(row["user_id"]),
-                            float(row["weight"]),
-                            float(row["sugar"]),
-                            str(row["date_when_created"]),
-                        )
                 elif table_choice == "Pressure":
                     required_columns = {
                         "user_id",
@@ -559,29 +646,80 @@ def database():
                         "apressure",
                         "date_when_created",
                     }
-                    if not required_columns.issubset(df.columns.str.lower()):
+                    if not required_columns.issubset(df.columns):
                         flash(
-                            " Pressure: потрібні стовпці: user_id, bpressure, apressure, date_when_created",
+                            "Pressure: потрібні стовпці: user_id, bpressure, apressure, date_when_created",
                             "error",
                         )
                         return redirect(url_for("database"))
 
-                    cursor.execute("DELETE FROM pressure")
+                else:
+                    flash("Невірний вибір таблиці.", "error")
+                    return redirect(url_for("database"))
+
+                uploaded_user_ids = set(df["user_id"].astype(int))
+                missing_user_ids = uploaded_user_ids - existing_user_ids
+
+                if missing_user_ids:
+                    missing_ids_str = ", ".join(map(str, sorted(missing_user_ids)))
+                    flash(
+                        f"Помилка! Наступні user_id не знайдено в базі: {missing_ids_str}. Завантаження скасовано.",
+                        "error",
+                    )
+                    conn.close()
+                    return redirect(url_for("database"))
+
+                if table_choice == "Pulse":
+                    for _, row in df.iterrows():
+                        cursor.execute(
+                            "INSERT INTO pulse (user_id, pulse, date_when_created) VALUES (?, ?, ?)",
+                            (
+                                int(row["user_id"]),
+                                int(row["pulse"]),
+                                str(row["date_when_created"]),
+                            ),
+                        )
+                elif table_choice == "Dispersion":
+                    for _, row in df.iterrows():
+                        cursor.execute(
+                            "INSERT INTO dispersion (user_id, pulse, date_when_created) VALUES (?, ?, ?)",
+                            (
+                                int(row["user_id"]),
+                                int(row["pulse"]),
+                                str(row["date_when_created"]),
+                            ),
+                        )
+                elif table_choice == "WaS":
+                    for _, row in df.iterrows():
+                        cursor.execute(
+                            "INSERT INTO WaS (user_id, weight, sugar, date_when_created) VALUES (?, ?, ?, ?)",
+                            (
+                                int(row["user_id"]),
+                                float(row["weight"]),
+                                float(row["sugar"]),
+                                str(row["date_when_created"]),
+                            ),
+                        )
+                elif table_choice == "Pressure":
                     for _, row in df.iterrows():
                         cursor.execute(
                             "INSERT INTO pressure (user_id, bpressure, apressure, date_when_created) VALUES (?, ?, ?, ?)",
-                            int(row["user_id"]),
-                            int(row["bpressure"]),
-                            int(row["apressure"]),
-                            str(row["date_when_created"]),
+                            (
+                                int(row["user_id"]),
+                                int(row["bpressure"]),
+                                int(row["apressure"]),
+                                str(row["date_when_created"]),
+                            ),
                         )
 
                 conn.commit()
                 conn.close()
+
                 flash(f"Дані імпортовано в таблицю {table_choice}!", "success")
 
             except Exception as e:
-                flash(f" Помилка імпорту: {e}", "error")
+                flash(f"Сталася помилка при обробці файлу: {str(e)}", "error")
+                return redirect(url_for("database"))
 
     return render_template("database.html")
 
@@ -825,10 +963,11 @@ def send_message():
         public_key = load_public_key()
         encrypted_message = encrypt_rsa(message, public_key)
 
-        query = (
-            "INSERT INTO messages (sender_id, receiver_id, message) VALUES (?, ?, ?)"
-        )
-        cursor.execute(query, (sender_id, receiver_id, encrypted_message))
+        # добавляем текущее время отправки
+        sent_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        query = "INSERT INTO messages (sender_id, receiver_id, message, sent_at) VALUES (?, ?, ?, ?)"
+        cursor.execute(query, (sender_id, receiver_id, encrypted_message, sent_at))
         conn.commit()
 
         cursor.close()
@@ -986,6 +1125,7 @@ def get_calendar(patient_id):
         (patient_id,),
     )
     print("💡 ДОСТУП РАЗРЕШЁН! session['user_id'] =", session.get("user_id"))
+    print(" ДОСТУП РАЗРЕШЁН! session['user_id'] =", session.get("user_id"))
     events = cursor.fetchall()
     conn.close()
 
@@ -1181,7 +1321,9 @@ def run_tkinter(patient_id):
     if not os.path.exists(patient_folder):
         return "Помилка: папку пацієнта не знайдено!", 400
 
-    subprocess.Popen([sys.executable, "graph.py", str(patient_id)], start_new_session=True)
+    subprocess.Popen(
+        [sys.executable, "graph.py", str(patient_id)], start_new_session=True
+    )
     return "График!", 200
 
 

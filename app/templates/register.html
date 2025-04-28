@@ -15,7 +15,6 @@
       align-items: center;
       height: 100vh;
     }
-
     .form-wrapper {
       width: 320px;
       max-width: 90%;
@@ -26,19 +25,16 @@
       border-radius: 12px;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
     }
-
     form {
       width: 100%;
       text-align: center;
     }
-
     h2 {
       font-weight: bold;
       font-size: 22px;
       color: #003A3A;
       margin-bottom: 20px;
     }
-
     label {
       display: block;
       margin: 10px 0 5px;
@@ -46,7 +42,6 @@
       color: #333;
       text-align: left;
     }
-
     input[type="text"],
     input[type="password"],
     input[type="email"],
@@ -61,12 +56,10 @@
       font-family: inherit;
       font-size: 14px;
     }
-
     textarea {
       resize: vertical;
       min-height: 60px;
     }
-
     button, .back-btn {
       background-color: #005C5C;
       color: white;
@@ -77,16 +70,20 @@
       cursor: pointer;
       transition: background-color 0.3s;
       margin-top: 10px;
+      text-decoration: none;
     }
-
     button:hover, .back-btn:hover {
       background-color: #007D7D;
     }
-
     .back-btn {
       display: inline-block;
-      text-decoration: none;
       margin-top: 15px;
+    }
+    .info-message {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 15px;
+      text-align: left;
     }
   </style>
 </head>
@@ -95,12 +92,17 @@
     <form action="{{ url_for('register_user', token=token) }}" method="POST" enctype="multipart/form-data">
 
       <h2>Реєстрація користувача (роль: {{ role }})</h2>
+ 
 
       <label for="login">Логін:</label>
       <input type="text" id="login" name="login" required>
 
       <label for="password">Пароль:</label>
-      <input type="password" id="password" name="password" required>
+      <input type="password" id="password" name="password" pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}" 
+             title="Мінімум 8 символів, повинні бути великі та малі літери та цифри" required>
+      <div class="info-message">
+        * Пароль має містити щонайменше 8 символів, великі та малі літери та цифру.
+      </div>
 
       <label for="email">Email:</label>
       <input type="email" id="email" name="email" required>
