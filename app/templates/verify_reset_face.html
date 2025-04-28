@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Верифікація обличчя для відновлення пароля</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: #f6f8f8;
+            margin: 0;
+            padding: 0;
+            color: #003A3A;
+            text-align: center;
+        }
+
+        header {
+            background-color: #004B4B;
+            color: white;
+            padding: 25px 0;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 30px auto;
+            background-color: white;
+            border-radius: 14px;
+            padding: 30px;
+            box-shadow: 0 0 12px rgba(0,0,0,0.07);
+        }
+
+        h2 {
+            color: #004B4B;
+            margin-top: 0;
+        }
+
+        video {
+            border-radius: 14px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            max-width: 100%;
+        }
+
+        canvas {
+            display: none;
+        }
+
+        button {
+            margin: 20px 0;
+            padding: 12px 24px;
+            background-color: #0097a7;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+
+        button:hover {
+            background-color: #007b8a;
+        }
+
+        footer {
+            margin-top: 40px;
+            font-size: 14px;
+            color: #777;
+        }
+
+        .flash-messages {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 20px;
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Верифікація обличчя</h1>
+    </header>
+
+    <div class="container">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <ul class="flash-messages">
+                    {% for message in messages %}
+                        <li>{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        <h2>Подивіться у камеру та натисніть “Зробити фото”</h2>
+        <video id="video" width="640" height="480" autoplay></video>
+        <canvas id="canvas" width="640" height="480"></canvas>
+
+        <form id="photoForm" method="POST">
+            <input type="hidden" name="photo" id="photoInput">
+            <button type="button" id="snap">📸 Зробити фото</button>
+        </form>
+    </div> 
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const snap = document.getElementById('snap');
+        const photoInput = document.getElementById('photoInput');
+        const form = document.getElementById('photoForm');
+ 
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => video.srcObject = stream)
+            .catch(err => console.error("Помилка доступу до камери:", err));
+ 
+        snap.addEventListener('click', () => {
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataURL = canvas.toDataURL('image/jpeg');
+            photoInput.value = dataURL;
+            form.submit();
+        });
+    </script>
+</body>
+</html>

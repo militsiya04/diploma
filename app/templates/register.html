@@ -92,10 +92,7 @@
     <form action="{{ url_for('register_user', token=token) }}" method="POST" enctype="multipart/form-data">
 
       <h2>Реєстрація користувача (роль: {{ role }})</h2>
-
-      <div class="info-message">
-        * Переконайтесь, що ваша електронна пошта правильна — вона буде використовуватися для скидання пароля.
-      </div>
+ 
 
       <label for="login">Логін:</label>
       <input type="text" id="login" name="login" required>
