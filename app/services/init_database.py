@@ -59,7 +59,9 @@ def create_tables(conn):
             photo MEMO,
             position MEMO,
             info MEMO,
-            age INTEGER
+            age INTEGER,
+            phone_hash MEMO,
+            email_hash MEMO
         )
     """
     )
