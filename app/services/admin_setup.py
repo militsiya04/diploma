@@ -20,10 +20,10 @@ def generate_registration_link(
         cursor.execute(
             """
                 CREATE TABLE registration_tokens (
-                    token TEXT,
-                    expiry DATETIME,
-                    used YESNO,
-                    role TEXT
+                    token TEXT NOT NULL,
+                    expiry DATETIME  NOT NULL,
+                    used YESNO NOT NULL,
+                    role TEXT NOT NULL
                 )
             """
         )

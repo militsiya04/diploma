@@ -37,10 +37,10 @@ def create_tables(conn):
         """
         CREATE TABLE calendar_events (
             id COUNTER PRIMARY KEY,
-            patient_id INTEGER,
+            patient_id INTEGER NOT NULL,
             title TEXT(100),
-            start DATETIME,
-            end DATETIME,
+            start DATETIME NOT NULL,
+            end DATETIME NOT NULL,
             description MEMO
         )
     """
@@ -50,18 +50,18 @@ def create_tables(conn):
         """
         CREATE TABLE users (
             id COUNTER PRIMARY KEY,
-            login MEMO,
-            password MEMO,
-            email MEMO,
-            phone MEMO,
+            login MEMO NOT NULL,
+            password MEMO NOT NULL,
+            email MEMO NOT NULL,
+            phone MEMO NOT NULL,
             first_name MEMO,
             surname MEMO,
             photo MEMO,
             position MEMO,
             info MEMO,
             age INTEGER,
-            phone_hash MEMO,
-            email_hash MEMO
+            phone_hash MEMO NOT NULL,
+            email_hash MEMO NOT NULL
         )
     """
     )
@@ -70,8 +70,8 @@ def create_tables(conn):
         """
         CREATE TABLE messages (
             id COUNTER PRIMARY KEY,
-            sender_id INTEGER,
-            receiver_id INTEGER,
+            sender_id INTEGER NOT NULL,
+            receiver_id INTEGER NOT NULL,
             message MEMO,
             sent_at DATETIME,
             is_read INTEGER
@@ -83,7 +83,7 @@ def create_tables(conn):
         """
         CREATE TABLE pulse (
             id COUNTER PRIMARY KEY,
-            user_id INTEGER,
+            user_id INTEGER NOT NULL,
             pulse INTEGER,
             date_when_created DATETIME
         )
@@ -94,7 +94,7 @@ def create_tables(conn):
         """
         CREATE TABLE dispersion (
             id COUNTER PRIMARY KEY,
-            user_id INTEGER,
+            user_id INTEGER NOT NULL,
             pulse INTEGER,
             date_when_created DATETIME
         )
@@ -105,7 +105,7 @@ def create_tables(conn):
         """
         CREATE TABLE WaS (
             id COUNTER PRIMARY KEY,
-            user_id INTEGER,
+            user_id INTEGER NOT NULL,
             weight INTEGER,
             sugar TEXT(100),
             date_when_created DATETIME
@@ -117,7 +117,7 @@ def create_tables(conn):
         """
         CREATE TABLE pressure (
             id COUNTER PRIMARY KEY,
-            user_id INTEGER,
+            user_id INTEGER NOT NULL,
             bpressure INTEGER,
             apressure INTEGER,
             date_when_created DATETIME
@@ -128,16 +128,18 @@ def create_tables(conn):
     cursor.execute(
         """
         CREATE TABLE otp_tokens (
-            user_id INT,
-            code TEXT,
-            type TEXT,
-            expiry DATETIME,
-            used YESNO
+            user_id INTEGER NOT NULL,
+            code TEXT(100) NOT NULL,
+            type TEXT(50) NOT NULL,
+            expiry DATETIME NOT NULL,
+            used YESNO NOT NULL
         )
     """
     )
 
-    cursor.execute("CREATE INDEX idx_calendar_events_patient_id ON calendar_events (patient_id)")
+    cursor.execute(
+        "CREATE INDEX idx_calendar_events_patient_id ON calendar_events (patient_id)"
+    )
     cursor.execute("CREATE INDEX idx_messages_sender_id ON messages (sender_id)")
     cursor.execute("CREATE INDEX idx_messages_receiver_id ON messages (receiver_id)")
     cursor.execute("CREATE INDEX idx_pulse_user_id ON pulse (user_id)")
