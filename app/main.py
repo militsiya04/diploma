@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import io
 import os
 import random
@@ -139,9 +140,12 @@ def register_user(token: str):
 
         session.pop("captcha", None)
 
+        email_hash = hashlib.sha256(email.encode()).hexdigest()
+        phone_hash = hashlib.sha256(phone.encode()).hexdigest()
+
         cursor.execute(
-            "SELECT * FROM users WHERE login = ? OR email = ? OR phone = ?",
-            (login, email, phone),
+            "SELECT * FROM users WHERE login = ? OR email_hash = ? OR phone_hash = ?",
+            (login, email_hash, phone_hash),
         )
         if cursor.fetchone():
             conn.close()
@@ -160,8 +164,8 @@ def register_user(token: str):
 
         cursor.execute(
             """
-            INSERT INTO users (position, login, password, email, phone, first_name, surname)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO users (position, login, password, email, phone, first_name, surname, email_hash, phone_hash)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 role,
@@ -171,6 +175,8 @@ def register_user(token: str):
                 encrypted_phone,
                 encrypted_first_name,
                 encrypted_surname,
+                email_hash,
+                phone_hash,
             ),
         )
 
