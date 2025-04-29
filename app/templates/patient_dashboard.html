@@ -71,19 +71,23 @@
             color: #004B4B;
         }
 
-        input[type="file"] {
+        input[type="file"],
+        input[type="number"],
+        input[type="text"] {
             padding: 10px;
             background: #f0fafa;
             border: 1px solid #a3dcdc;
             border-radius: 8px;
             width: 100%;
             max-width: 400px;
+            margin: 0 auto 10px auto;
+            display: block;
         }
 
         button, a {
             display: inline-block;
             margin: 10px 6px;
-            padding: 10px 20px;
+            padding: 12px 24px;
             background-color: #0097a7;
             color: white;
             text-decoration: none;
@@ -157,6 +161,20 @@
         .logout-link:hover {
             text-decoration: underline;
         }
+
+        .data-forms {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .data-form {
+            background-color: #f8fcfc;
+            padding: 20px;
+            border: 1px solid #cce5e5;
+            border-radius: 12px;
+        }
     </style>
 
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
@@ -171,14 +189,14 @@
     <div class="container">
 
         {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        <div style="background-color: #d9f9f9; border: 1px solid #00a3a3; color: #004b4b; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-            {% for message in messages %}
-              <p>{{ message }}</p>
-            {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
+          {% if messages %}
+            <div style="background-color: #d9f9f9; border: 1px solid #00a3a3; color: #004b4b; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                {% for message in messages %}
+                  <p>{{ message }}</p>
+                {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
     
         <h2>{{ patient["first_name"] }} {{ patient["surname"] }}</h2>
 
@@ -203,8 +221,8 @@
             <button type="submit">Завантажити</button>
         </form>
 
-        <a href="{{ url_for('download_info', format='pdf') }}">📥 Завантажити PDF</a>
-        <a href="{{ url_for('download_info', format='docx') }}">📥 Завантажити DOCX</a>
+        <a href="{{ url_for('download_info', format='pdf', patient_id=patient_id ) }}">📥 Завантажити PDF</a>
+        <a href="{{ url_for('download_info', format='docx', patient_id=patient_id) }}">📥 Завантажити DOCX</a>
         <button onclick="createNewTable()">Створити нову таблицю</button>
 
         <h3>Файли пацієнта</h3>
@@ -221,6 +239,44 @@
         </ul>
 
         <button onclick="runTkinter()">Запустити Tkinter</button>
+
+        <h3>Додати медичні дані</h3>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+
+    <form action="{{ url_for('add_pulse', patient_id=patient_id) }}" method="POST" style="background: #f8fcfc; padding: 20px; border-radius: 10px;">
+        <label for="pulse">Пульс:</label>
+        <input type="number" name="pulse" required>
+        <button type="submit">Додати пульс</button>
+    </form>
+
+    <form action="{{ url_for('add_dispersion', patient_id=patient_id) }}" method="POST" style="background: #f8fcfc; padding: 20px; border-radius: 10px;">
+        <label for="dispersion">Дисперсія:</label>
+        <input type="number" name="dispersion" required>
+        <button type="submit">Додати дисперсію</button>
+    </form>
+
+    <form action="{{ url_for('add_was', patient_id=patient_id) }}" method="POST" style="background: #f8fcfc; padding: 20px; border-radius: 10px;">
+        <label for="weight">Вага:</label>
+        <input type="number" name="weight" required>
+    
+        <label for="sugar">Цукор:</label>
+        <input type="number" name="sugar" step="any" required>
+    
+        <button type="submit">Додати вагу та цукор</button>
+    </form>
+    
+
+    <form action="{{ url_for('add_pressure', patient_id=patient_id) }}" method="POST" style="background: #f8fcfc; padding: 20px; border-radius: 10px;">
+        <label for="bpressure">Систолічний тиск:</label>
+        <input type="number" name="bpressure" required>
+        <label for="apressure">Діастолічний тиск:</label>
+        <input type="number" name="apressure" required>
+        <button type="submit">Додати тиск</button>
+    </form>
+
+</div>
+
 
         <h3>Календар пацієнта</h3>
         <div id="calendar"></div>
