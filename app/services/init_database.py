@@ -129,8 +129,8 @@ def create_tables(conn):
         """
         CREATE TABLE otp_tokens (
             user_id INTEGER NOT NULL,
-            code TEXT(100) NOT NULL,
-            type TEXT(50) NOT NULL,
+            code TEXT NOT NULL,
+            type TEXT NOT NULL,
             expiry DATETIME NOT NULL,
             used YESNO NOT NULL
         )
