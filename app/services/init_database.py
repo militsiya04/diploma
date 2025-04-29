@@ -39,8 +39,8 @@ def create_tables(conn):
             id COUNTER PRIMARY KEY,
             patient_id INTEGER NOT NULL,
             title TEXT(100),
-            start DATETIME NOT NULL,
-            end DATETIME NOT NULL,
+            start DATETIME,
+            end DATETIME,
             description MEMO
         )
     """
