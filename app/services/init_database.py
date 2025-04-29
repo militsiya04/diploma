@@ -137,6 +137,79 @@ def create_tables(conn):
     """
     )
 
+    cursor.execute("CREATE INDEX idx_calendar_events_patient_id ON calendar_events (patient_id)")
+    cursor.execute("CREATE INDEX idx_messages_sender_id ON messages (sender_id)")
+    cursor.execute("CREATE INDEX idx_messages_receiver_id ON messages (receiver_id)")
+    cursor.execute("CREATE INDEX idx_pulse_user_id ON pulse (user_id)")
+    cursor.execute("CREATE INDEX idx_dispersion_user_id ON dispersion (user_id)")
+    cursor.execute("CREATE INDEX idx_WaS_user_id ON WaS (user_id)")
+    cursor.execute("CREATE INDEX idx_pressure_user_id ON pressure (user_id)")
+    cursor.execute("CREATE INDEX idx_otp_tokens_user_id ON otp_tokens (user_id)")
+
+    cursor.execute(
+        """
+        ALTER TABLE calendar_events
+        ADD CONSTRAINT fk_calendar_patient
+        FOREIGN KEY (patient_id) REFERENCES users(id)
+        """
+    )
+
+    cursor.execute(
+        """
+        ALTER TABLE messages
+        ADD CONSTRAINT fk_messages_sender
+        FOREIGN KEY (sender_id) REFERENCES users(id)
+        """
+    )
+
+    cursor.execute(
+        """
+        ALTER TABLE messages
+        ADD CONSTRAINT fk_messages_receiver
+        FOREIGN KEY (receiver_id) REFERENCES users(id)
+        """
+    )
+
+    cursor.execute(
+        """
+        ALTER TABLE pulse
+        ADD CONSTRAINT fk_pulse_user
+        FOREIGN KEY (user_id) REFERENCES users(id)
+        """
+    )
+
+    cursor.execute(
+        """
+        ALTER TABLE dispersion
+        ADD CONSTRAINT fk_dispersion_user
+        FOREIGN KEY (user_id) REFERENCES users(id)
+        """
+    )
+
+    cursor.execute(
+        """
+        ALTER TABLE WaS
+        ADD CONSTRAINT fk_WaS_user
+        FOREIGN KEY (user_id) REFERENCES users(id)
+        """
+    )
+
+    cursor.execute(
+        """
+        ALTER TABLE pressure
+        ADD CONSTRAINT fk_pressure_user
+        FOREIGN KEY (user_id) REFERENCES users(id)
+        """
+    )
+
+    cursor.execute(
+        """
+        ALTER TABLE otp_tokens
+        ADD CONSTRAINT fk_otp_tokens_user
+        FOREIGN KEY (user_id) REFERENCES users(id)
+        """
+    )
+
     conn.commit()
 
 
