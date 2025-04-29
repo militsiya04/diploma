@@ -399,7 +399,7 @@ def verify_face():
                 return redirect(url_for("verify_face"))
 
         except Exception as e:
-            flash(f"Помилка порівняння: {str(e)}", "error")
+            flash(f"Помилка порівняння", "error")
             if os.path.exists(input_photo_path):
                 os.remove(input_photo_path)
             return redirect(url_for("verify_face"))
