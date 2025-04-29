@@ -117,10 +117,7 @@
       <input type="text" id="surname" name="surname" required>
 
       <label for="photo">Фото:</label>
-      <input type="file" id="photo" name="photo" accept="image/*">
-
-      <label for="info">Додаткова інформація:</label>
-      <textarea id="info" name="info"></textarea>
+      <input type="file" id="photo" name="photo" accept="image/*"> 
 
       <img src="{{ url_for('captcha') }}" alt="Капча"><br><br>
       <input type="text" id="captcha" name="captcha" placeholder="Введіть капчу" required><br><br>

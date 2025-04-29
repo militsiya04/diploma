@@ -594,171 +594,74 @@ def generate_links():
     )
 
 
-@app.route("/database", methods=["GET", "POST"])
+@app.route("/add_pulse/<int:patient_id>", methods=["POST"])
 @login_required_with_timeout()
 @roles_required("admin", "doctor")
-def database():
-    if request.method == "POST":
-        file = request.files.get("excel_file")
-        table_choice = request.form.get("table_choice")
-
-        if file and table_choice:
-            try:
-                df = pd.read_excel(file)
-                df.columns = df.columns.str.lower()
-
-                conn = get_db_connection()
-                cursor = conn.cursor()
-
-                cursor.execute("SELECT id FROM users")
-                existing_user_ids = {row[0] for row in cursor.fetchall()}
-
-                if table_choice == "Pulse":
-                    required_columns = {"user_id", "pulse", "date_when_created"}
-                    if not required_columns.issubset(df.columns):
-                        flash(
-                            "Pulse: потрібні стовпці: user_id, pulse, date_when_created",
-                            "error",
-                        )
-                        return redirect(url_for("database"))
-
-                elif table_choice == "Dispersion":
-                    required_columns = {"user_id", "pulse", "date_when_created"}
-                    if not required_columns.issubset(df.columns):
-                        flash(
-                            "Dispersion: потрібні стовпці: user_id, pulse, date_when_created",
-                            "error",
-                        )
-                        return redirect(url_for("database"))
-
-                elif table_choice == "WaS":
-                    required_columns = {
-                        "user_id",
-                        "weight",
-                        "sugar",
-                        "date_when_created",
-                    }
-                    if not required_columns.issubset(df.columns):
-                        flash(
-                            "WaS: потрібні стовпці: user_id, weight, sugar, date_when_created",
-                            "error",
-                        )
-                        return redirect(url_for("database"))
-
-                elif table_choice == "Pressure":
-                    required_columns = {
-                        "user_id",
-                        "bpressure",
-                        "apressure",
-                        "date_when_created",
-                    }
-                    if not required_columns.issubset(df.columns):
-                        flash(
-                            "Pressure: потрібні стовпці: user_id, bpressure, apressure, date_when_created",
-                            "error",
-                        )
-                        return redirect(url_for("database"))
-
-                else:
-                    flash("Невірний вибір таблиці.", "error")
-                    return redirect(url_for("database"))
-
-                uploaded_user_ids = set(df["user_id"].astype(int))
-                missing_user_ids = uploaded_user_ids - existing_user_ids
-
-                if missing_user_ids:
-                    missing_ids_str = ", ".join(map(str, sorted(missing_user_ids)))
-                    flash(
-                        f"Помилка! Наступні user_id не знайдено в базі: {missing_ids_str}. Завантаження скасовано.",
-                        "error",
-                    )
-                    conn.close()
-                    return redirect(url_for("database"))
-
-                if table_choice == "Pulse":
-                    for _, row in df.iterrows():
-                        cursor.execute(
-                            "INSERT INTO pulse (user_id, pulse, date_when_created) VALUES (?, ?, ?)",
-                            (
-                                int(row["user_id"]),
-                                int(row["pulse"]),
-                                str(row["date_when_created"]),
-                            ),
-                        )
-                elif table_choice == "Dispersion":
-                    for _, row in df.iterrows():
-                        cursor.execute(
-                            "INSERT INTO dispersion (user_id, pulse, date_when_created) VALUES (?, ?, ?)",
-                            (
-                                int(row["user_id"]),
-                                int(row["pulse"]),
-                                str(row["date_when_created"]),
-                            ),
-                        )
-                elif table_choice == "WaS":
-                    for _, row in df.iterrows():
-                        cursor.execute(
-                            "INSERT INTO WaS (user_id, weight, sugar, date_when_created) VALUES (?, ?, ?, ?)",
-                            (
-                                int(row["user_id"]),
-                                float(row["weight"]),
-                                float(row["sugar"]),
-                                str(row["date_when_created"]),
-                            ),
-                        )
-                elif table_choice == "Pressure":
-                    for _, row in df.iterrows():
-                        cursor.execute(
-                            "INSERT INTO pressure (user_id, bpressure, apressure, date_when_created) VALUES (?, ?, ?, ?)",
-                            (
-                                int(row["user_id"]),
-                                int(row["bpressure"]),
-                                int(row["apressure"]),
-                                str(row["date_when_created"]),
-                            ),
-                        )
-
-                conn.commit()
-                conn.close()
-
-                flash(f"Дані імпортовано в таблицю {table_choice}!", "success")
-
-            except Exception as e:
-                flash(f"Сталася помилка при обробці файлу: {str(e)}", "error")
-                return redirect(url_for("database"))
-
-    return render_template("database.html")
+def add_pulse(patient_id):
+    pulse = request.form["pulse"]
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO pulse (user_id, pulse, date_when_created) VALUES (?, ?, ?)",
+        (patient_id, pulse, datetime.now()),
+    )
+    conn.commit()
+    conn.close()
+    flash("Пульс додано успішно!")
+    return redirect(url_for("patient_dashboard", patient_id=patient_id))
 
 
-@app.route("/export_selected")
+@app.route("/add_dispersion/<int:patient_id>", methods=["POST"])
 @login_required_with_timeout()
 @roles_required("admin", "doctor")
-def export_selected():
-    table_name = request.args.get("table")
-    if table_name not in ["Pulse", "Dispersion", "WaS", "Pressure"]:
-        flash(" Невідома таблиця для експорту.", "error")
-        return redirect(url_for("database"))
+def add_dispersion(patient_id):
+    dispersion = request.form["dispersion"]
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO dispersion (user_id, pulse, date_when_created) VALUES (?, ?, ?)",
+        (patient_id, dispersion, datetime.now()),
+    )
+    conn.commit()
+    conn.close()
+    flash("Дисперсію додано успішно!")
+    return redirect(url_for("patient_dashboard", patient_id=patient_id))
 
-    try:
-        conn = get_db_connection()
-        df = pd.read_sql(f"SELECT * FROM {table_name}", conn)
-        conn.close()
 
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-            df.to_excel(writer, index=False, sheet_name=table_name)
+@app.route("/add_was/<int:patient_id>", methods=["POST"])
+@login_required_with_timeout()
+@roles_required("admin", "doctor")
+def add_was(patient_id):
+    weight = request.form["weight"]
+    sugar = request.form["sugar"]
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO WaS (user_id, weight, sugar, date_when_created) VALUES (?, ?, ?, ?)",
+        (patient_id, weight, sugar, datetime.now()),
+    )
+    conn.commit()
+    conn.close()
+    flash("Дані про вагу та цукор додано успішно!")
+    return redirect(url_for("patient_dashboard", patient_id=patient_id))
 
-        output.seek(0)
-        return send_file(
-            output,
-            as_attachment=True,
-            download_name=f"{table_name.lower()}_data.xlsx",
-            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
 
-    except Exception as e:
-        flash(f" Помилка експорту: {e}", "error")
-        return redirect(url_for("database"))
+@app.route("/add_pressure/<int:patient_id>", methods=["POST"])
+@login_required_with_timeout()
+@roles_required("admin", "doctor")
+def add_pressure(patient_id):
+    bpressure = request.form["bpressure"]
+    apressure = request.form["apressure"]
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO pressure (user_id, bpressure, apressure, date_when_created) VALUES (?, ?, ?, ?)",
+        (patient_id, bpressure, apressure, datetime.now()),
+    )
+    conn.commit()
+    conn.close()
+    flash("Тиск додано успішно!")
+    return redirect(url_for("patient_dashboard", patient_id=patient_id))
 
 
 @app.route("/dashboard")
@@ -805,20 +708,19 @@ def dashboard():
     )
 
 
-@app.route("/download-info/<string:format>")
+@app.route("/download-info/<string:format>/<int:patient_id>")
 @login_required_with_timeout()
 @roles_required("admin", "doctor", "patient")
-def download_info(format):
+def download_info(format, patient_id):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
         "SELECT first_name, surname, email, phone, position, info FROM users WHERE id = ?",
-        (session["user_id"],),
+        (patient_id,),
     )
     user = cursor.fetchone()
-    conn.close()
-
     if not user:
+        conn.close()
         flash("Інформація про користувача не знайдена.", "error")
         return redirect(url_for("dashboard"))
 
@@ -829,7 +731,101 @@ def download_info(format):
     phone = decrypt_rsa(user[3], private_key)
     position = user[4]
     info = decrypt_rsa(user[5], private_key) if user[5] else "N/A"
+    conn.close()
 
+    # --- Медичні дані ---
+    conn_med = get_db_connection()
+    pulse_df = pd.read_sql(
+        f"SELECT pulse FROM pulse WHERE user_id = {patient_id}", conn_med
+    )
+    pressure_df = pd.read_sql(
+        f"SELECT bpressure, apressure FROM Pressure WHERE user_id = {patient_id}",
+        conn_med,
+    )
+    weight_sugar_df = pd.read_sql(
+        f"SELECT weight, sugar FROM WaS WHERE user_id = {patient_id}", conn_med
+    )
+    conn_med.close()
+
+    # Аналіз пульсу
+    pulse_text = ""
+    if not pulse_df.empty:
+        pulse_avg = pulse_df["pulse"].dropna().mean()
+        pulse_text = f"Середній пульс: {pulse_avg:.2f} уд/хв"
+        if pulse_avg < 60 or pulse_avg > 100:
+            pulse_text += "\nПульс виходить за межі норми (60-100 уд/хв)!"
+
+    # Аналіз тиску
+    pressure_text = ""
+    if not pressure_df.empty:
+        bp_avg = pressure_df["bpressure"].dropna().mean()
+        ap_avg = pressure_df["apressure"].dropna().mean()
+        pressure_text = (
+            f"Середній початковий тиск: {bp_avg:.2f} мм рт.ст.\n"
+            f"Середній після лікування: {ap_avg:.2f} мм рт.ст."
+        )
+        if bp_avg < 90 or bp_avg > 140:
+            pressure_text += "\nПочатковий тиск виходить за межі норми (90–140)!"
+        if ap_avg < 90 or ap_avg > 140:
+            pressure_text += "\nТиск після лікування виходить за межі норми (90–140)!"
+
+    # Оцінка ефективності лікування
+    treatment_effect_text = ""
+    if not pressure_df.empty:
+        before = pressure_df["bpressure"].dropna()
+        after = pressure_df["apressure"].dropna()
+
+        if len(before) >= 2 and len(before) == len(after):
+            avg_before = before.mean()
+            avg_after = after.mean()
+            delta = avg_before - avg_after
+
+            treatment_effect_text = (
+                f"Ефективність лікування (аналіз тиску):\n"
+                f"  - Середній тиск до лікування: {avg_before:.2f} мм рт.ст.\n"
+                f"  - Середній тиск після лікування: {avg_after:.2f} мм рт.ст.\n"
+                f"  - Різниця: {delta:.2f} мм рт.ст.\n"
+            )
+
+            if delta > 0:
+                treatment_effect_text += (
+                    "Спостерігається зниження тиску після лікування.\n"
+                )
+            elif delta < 0:
+                treatment_effect_text += "Після лікування тиск підвищився.\n"
+            else:
+                treatment_effect_text += "Зміни тиску не виявлено.\n"
+        else:
+            treatment_effect_text = (
+                "Ефективність лікування: недостатньо парних даних для аналізу.\n"
+            )
+
+    # Аналіз ваги та цукру
+    weight_sugar_text = ""
+    if not weight_sugar_df.empty:
+        weight_sugar_df.columns = [
+            col.strip().lower() for col in weight_sugar_df.columns
+        ]
+        weight_sugar_df["parsed_sugar"] = (
+            weight_sugar_df["sugar"]
+            .astype(str)
+            .str.replace(",", ".", regex=False)
+            .astype(float)
+        )
+        avg_weight = weight_sugar_df["weight"].dropna().mean()
+        avg_sugar = weight_sugar_df["parsed_sugar"].dropna().mean()
+
+        weight_sugar_text = (
+            f"Середня вага: {avg_weight:.2f} кг\n"
+            f"Середній рівень цукру: {avg_sugar:.2f} ммоль/л"
+        )
+
+        if avg_sugar < 3.9 or avg_sugar > 7.8:
+            weight_sugar_text += (
+                "\nРівень цукру виходить за межі норми (3.9–7.8 ммоль/л)!"
+            )
+
+    # --- Формування звіту ---
     if format == "pdf":
         base_dir = os.path.dirname(os.path.abspath(__file__))
         font_path = os.path.join(base_dir, "static", "fonts", "free-sans.ttf")
@@ -839,13 +835,27 @@ def download_info(format):
         c = canvas.Canvas(pdf_file, pagesize=letter)
         c.setFont("FreeSans", 12)
 
-        c.drawString(100, 750, "Информация о пользователе")
-        c.drawString(100, 730, f"Имя: {first_name}")
-        c.drawString(100, 710, f"Фамилия: {surname}")
+        # Текст
+        c.drawString(100, 750, "Інформація про користувача:")
+        c.drawString(100, 730, f"Ім'я: {first_name}")
+        c.drawString(100, 710, f"Прізвище: {surname}")
         c.drawString(100, 690, f"Email: {email}")
         c.drawString(100, 670, f"Телефон: {phone}")
-        c.drawString(100, 650, f"Должность: {position}")
-        c.drawString(100, 630, f"Информация: {info}")
+        c.drawString(100, 650, f"Посада: {position}")
+        c.drawString(100, 630, f"Інформація: {info}")
+
+        # Медичні дані
+        y = 600
+        for line in (
+            pulse_text,
+            pressure_text,
+            treatment_effect_text,
+            weight_sugar_text,
+        ):
+            for subline in line.split("\n"):
+                c.drawString(100, y, subline)
+                y -= 20
+            y -= 10
 
         c.save()
         pdf_file.seek(0)
@@ -859,13 +869,19 @@ def download_info(format):
 
     elif format == "docx":
         doc = Document()
-        doc.add_heading("Информация о пользователе", level=1)
-        doc.add_paragraph(f"Имя: {first_name}")
-        doc.add_paragraph(f"Фамилия: {surname}")
+        doc.add_heading("Інформація про користувача", level=1)
+        doc.add_paragraph(f"Ім'я: {first_name}")
+        doc.add_paragraph(f"Прізвище: {surname}")
         doc.add_paragraph(f"Email: {email}")
         doc.add_paragraph(f"Телефон: {phone}")
-        doc.add_paragraph(f"Должность: {position}")
-        doc.add_paragraph(f"Информация: {info}")
+        doc.add_paragraph(f"Посада: {position}")
+        doc.add_paragraph(f"Інформація: {info}")
+
+        doc.add_heading("Медичні дані", level=2)
+        doc.add_paragraph(pulse_text)
+        doc.add_paragraph(pressure_text)
+        doc.add_paragraph(treatment_effect_text)
+        doc.add_paragraph(weight_sugar_text)
 
         doc_file = BytesIO()
         doc.save(doc_file)
