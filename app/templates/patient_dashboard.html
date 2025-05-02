@@ -221,8 +221,8 @@
             <button type="submit">Завантажити</button>
         </form>
 
-        <a href="{{ url_for('download_info', format='pdf', patient_id=patient_id ) }}">📥 Завантажити PDF</a>
-        <a href="{{ url_for('download_info', format='docx', patient_id=patient_id) }}">📥 Завантажити DOCX</a>
+        <a href="{{ url_for('download_info', format='pdf', patient_id=patient_id ) }}">Завантажити PDF</a>
+        <a href="{{ url_for('download_info', format='docx', patient_id=patient_id) }}">Завантажити DOCX</a>
         <button onclick="createNewTable()">Створити нову таблицю</button>
 
         <h3>Файли пацієнта</h3>
@@ -238,44 +238,97 @@
             {% endif %}
         </ul>
 
-        <button onclick="runTkinter()">Запустити Tkinter</button>
+        <button onclick="runTkinter()">Запустити блок статистики</button>
 
         <h3>Додати медичні дані</h3>
 
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
-
-    <form action="{{ url_for('add_pulse', patient_id=patient_id) }}" method="POST" style="background: #f8fcfc; padding: 20px; border-radius: 10px;">
-        <label for="pulse">Пульс:</label>
-        <input type="number" name="pulse" required>
-        <button type="submit">Додати пульс</button>
-    </form>
-
-    <form action="{{ url_for('add_dispersion', patient_id=patient_id) }}" method="POST" style="background: #f8fcfc; padding: 20px; border-radius: 10px;">
-        <label for="dispersion">Дисперсія:</label>
-        <input type="number" name="dispersion" required>
-        <button type="submit">Додати дисперсію</button>
-    </form>
-
-    <form action="{{ url_for('add_was', patient_id=patient_id) }}" method="POST" style="background: #f8fcfc; padding: 20px; border-radius: 10px;">
-        <label for="weight">Вага:</label>
-        <input type="number" name="weight" required>
-    
-        <label for="sugar">Цукор:</label>
-        <input type="number" name="sugar" step="any" required>
-    
-        <button type="submit">Додати вагу та цукор</button>
-    </form>
-    
-
-    <form action="{{ url_for('add_pressure', patient_id=patient_id) }}" method="POST" style="background: #f8fcfc; padding: 20px; border-radius: 10px;">
-        <label for="bpressure">Систолічний тиск:</label>
-        <input type="number" name="bpressure" required>
-        <label for="apressure">Діастолічний тиск:</label>
-        <input type="number" name="apressure" required>
-        <button type="submit">Додати тиск</button>
-    </form>
-
-</div>
+        <div style="margin-top: 20px;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%;">
+         
+                <form action="{{ url_for('add_pulse', patient_id=patient_id) }}" method="POST" style="background: #f8fcfc; padding: 20px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); width: 100%; max-width: 400px;">
+                    <label for="date_pulse" style="font-weight: bold; color: #004B4B; display: block; margin-bottom: 5px;">Дата:</label>
+                    <input type="date" name="selected_date" id="date_pulse" required style="width: 100%; padding: 10px; border: 1px solid #a3dcdc; border-radius: 8px; margin-bottom: 10px; background: #f0fafa;">
+                    <label for="pulse" style="font-weight: bold; color: #004B4B; display: block; margin-bottom: 5px;">Пульс:</label>
+                    <input type="number" name="pulse" required style="width: 100%; padding: 10px; border: 1px solid #a3dcdc; border-radius: 8px; margin-bottom: 10px; background: #f0fafa;">
+                    <button type="submit" style="background-color: #0097a7; color: white; padding: 12px 24px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; transition: background-color 0.3s ease; width: 100%;">Додати пульс</button>
+                </form> 
+                <form action="{{ url_for('add_dispersion', patient_id=patient_id) }}" method="POST" style="background: #f8fcfc; padding: 20px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); width: 100%; max-width: 400px;">
+                    <label for="date_dispersion" style="font-weight: bold; color: #004B4B; display: block; margin-bottom: 5px;">Дата:</label>
+                    <input type="date" name="selected_date" id="date_dispersion" required style="width: 100%; padding: 10px; border: 1px solid #a3dcdc; border-radius: 8px; margin-bottom: 10px; background: #f0fafa;">
+                    <label for="pulse" style="font-weight: bold; color: #004B4B; display: block; margin-bottom: 5px;">Пульс:</label>
+                    <input type="number" step="any" name="pulse" >
+                    <label for="pressure" >Тиск:</label>
+                    <input type="number" step="any" name="pressure" >
+                    <label for="oxygen_level" >Рівень кисню:</label>
+                    <input type="number" step="any" name="oxygen_level" >
+                    <label for="weight"  >Вага:</label>
+                    <input type="number" step="any" name="weight" >
+                    <label for="sugar" >Цукор (ммоль/л):</label>
+                    <input type="number" name="sugar" step="0.1" min="0" >
+                    <label for="temperature" >Температура (°C):</label>
+                    <input type="number" name="temperature" step="0.1" min="30" max="45" >
+                    <button type="submit" >Зберегти показники</button>
+                </form>
+            </div>
+        
+            <div style="display: flex; gap: 40px; justify-content: center; margin-top: 40px;">
+     
+                <form action="{{ url_for('add_was', patient_id=patient_id) }}" method="POST"
+                      style="background: #f8fcfc; padding: 20px; border-radius: 10px; width: 100%; max-width: 400px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);">
+                    <label for="date_was" style="font-weight: bold; color: #004B4B; margin-bottom: 5px; display: block;">Дата:</label>
+                    <input type="date" name="selected_date" id="date_was" required
+                           style="width: 100%; padding: 10px; border: 1px solid #a3dcdc; border-radius: 8px; margin-bottom: 10px; background: #f0fafa;">
+                    
+                    <label for="weight" style="font-weight: bold; color: #004B4B;">Вага:</label>
+                    <input type="number" name="weight" required
+                           style="width: 100%; padding: 10px; border: 1px solid #a3dcdc; border-radius: 8px; margin-bottom: 10px; background: #f0fafa;">
+                    
+                    <label for="sugar" style="font-weight: bold; color: #004B4B;">Цукор:</label>
+                    <input type="number" name="sugar" step="any" required
+                           style="width: 100%; padding: 10px; border: 1px solid #a3dcdc; border-radius: 8px; margin-bottom: 10px; background: #f0fafa;">
+                    
+                    <button type="submit"
+                            style="width: 100%; background-color: #0097a7; color: white; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: background-color 0.3s ease;">
+                        Додати вагу та цукор
+                    </button>
+                </form>
+             
+                <form action="{{ url_for('add_pressure', patient_id=patient_id) }}" method="POST"
+                      style="background: #f8fcfc; padding: 20px; border-radius: 10px; width: 100%; max-width: 400px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);">
+                    <label for="date_pressure" style="font-weight: bold; color: #004B4B; margin-bottom: 5px; display: block;">Дата:</label>
+                    <input type="date" name="selected_date" id="date_pressure" required
+                           style="width: 100%; padding: 10px; border: 1px solid #a3dcdc; border-radius: 8px; margin-bottom: 10px; background: #f0fafa;">
+                    
+                    <label for="bpressure" style="font-weight: bold; color: #004B4B;">Систолічний тиск:</label>
+                    <input type="number" name="bpressure" required
+                           style="width: 100%; padding: 10px; border: 1px solid #a3dcdc; border-radius: 8px; margin-bottom: 10px; background: #f0fafa;">
+                    
+                    <label for="apressure" style="font-weight: bold; color: #004B4B;">Діастолічний тиск:</label>
+                    <input type="number" name="apressure" required
+                           style="width: 100%; padding: 10px; border: 1px solid #a3dcdc; border-radius: 8px; margin-bottom: 10px; background: #f0fafa;">
+                    
+                    <button type="submit"
+                            style="width: 100%; background-color: #0097a7; color: white; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: background-color 0.3s ease;">
+                        Додати тиск
+                    </button>
+                </form>
+            </div>
+        </div>
+         
+        <script>
+            window.addEventListener('DOMContentLoaded', () => {
+                const today = new Date();
+                const todayStr = today.toISOString().split('T')[0];
+                const past = new Date();
+                past.setDate(past.getDate() - 30);
+                const pastStr = past.toISOString().split('T')[0];
+        
+                document.querySelectorAll('input[type="date"]').forEach(dateInput => {
+                    dateInput.setAttribute('max', todayStr);
+                    dateInput.setAttribute('min', pastStr);
+                });
+            });
+        </script>
 
 
         <h3>Календар пацієнта</h3>
@@ -335,9 +388,7 @@
         });
 
         function runTkinter() {
-            fetch("{{ url_for('run_tkinter', patient_id=patient_id) }}", { method: "POST" })
-                .then(response => response.text())
-                .then(data => alert(data));
+            fetch("{{ url_for('run_tkinter', patient_id=patient_id) }}", { method: "POST" }) 
         }
 
         function createNewTable() {

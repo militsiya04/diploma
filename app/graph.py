@@ -1,7 +1,8 @@
 import os
 import sys
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import Toplevel, Label, Button, messagebox, ttk
+from tkcalendar import DateEntry
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -94,23 +95,23 @@ class ExcelGraphApp:
 
         self.plot_button = ttk.Button(
             main_frame,
-            text="📊 Побудувати графік",
+            text="Побудувати графік",
             command=self.plot_graph,
             state="disabled",
         )
         self.plot_button.grid(row=7, column=0, pady=15, sticky="ew")
 
         ttk.Button(
-            main_frame, text="📈 Середній пульс", command=self.show_average_pulse
+            main_frame, text="Середній пульс", command=self.show_average_pulse
         ).grid(row=9, column=0, sticky="ew", pady=3)
         ttk.Button(
-            main_frame, text="📉 Аналіз тиску", command=self.analyze_pressure
+            main_frame, text="Статистика ваги", command=self.analyze_weight
         ).grid(row=11, column=0, sticky="ew", pady=3)
         ttk.Button(
-            main_frame, text="⚖️ Статистика ваги", command=self.analyze_weight
-        ).grid(row=12, column=0, sticky="ew", pady=3)
+            main_frame, text="Ефект лікування", command=self.analyze_treatment_effect
+        ).grid(row=12, column=0, sticky="ew", pady=(3))
         ttk.Button(
-            main_frame, text="🧪 Ефект лікування", command=self.analyze_treatment_effect
+            main_frame, text="Дисперсія", command=self.calculate_dispersion
         ).grid(row=13, column=0, sticky="ew", pady=(3, 10))
 
     def load_files(self):
@@ -241,101 +242,115 @@ class ExcelGraphApp:
             conn = pyodbc.connect(
                 rf"DRIVER={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={db_path};"
             )
-            df = pd.read_sql(
-                f"SELECT pulse FROM pulse WHERE user_id = {self.patient_id}", conn
-            )
-            conn.close()
-
-            pulses = df["pulse"].dropna()
-            if pulses.empty:
-                messagebox.showinfo("Немає даних", "Немає даних про пульс.")
-                return
-
-            average = pulses.mean()
-            messagebox.showinfo(
-                "Середній пульс", f"Середній пульс: {average:.2f} уд/хв"
-            )
-
-            if messagebox.askyesno(
-                "Графік пульсу", "Бажаєте переглянути графік пульсу?"
-            ):
-                plt.figure(figsize=(6, 4))
-                plt.plot(
-                    pulses.index, pulses.values, marker="o", linestyle="-", color="blue"
-                )
-                plt.title("Пульс з часом")
-                plt.xlabel("Вимірювання")
-                plt.ylabel("Пульс (уд/хв)")
-                plt.grid(True)
-                plt.tight_layout()
-                plt.show()
-
-        except Exception as e:
-            messagebox.showerror("Помилка", f"Не вдалося завантажити пульс:\n{e}")
-
-    def analyze_pressure(self):
-        try:
-            db_path = os.path.abspath("database/medical_system.accdb")
-            conn = pyodbc.connect(
-                rf"DRIVER={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={db_path};"
-            )
-            df = pd.read_sql(
-                f"SELECT bpressure, apressure FROM Pressure WHERE user_id = {self.patient_id}",
+            df_range = pd.read_sql(
+                f"SELECT MIN(date_when_created) AS min_date, MAX(date_when_created) AS max_date "
+                f"FROM pulse WHERE user_id = {self.patient_id}",
                 conn,
             )
             conn.close()
 
-            if df.empty:
-                messagebox.showinfo("Немає даних", "Немає даних про тиск.")
+            min_date, max_date = df_range["min_date"][0], df_range["max_date"][0]
+            if not min_date or not max_date:
+                messagebox.showinfo("Немає даних", "Немає доступних записів пульсу.")
                 return
 
-            bp_all = df["bpressure"].dropna()
-            ap_all = df["apressure"].dropna()
+            def on_confirm():
+                start = start_cal.get_date()
+                end = end_cal.get_date()
+                if start > end:
+                    messagebox.showerror("Помилка", "Дата 'з' має бути до 'по'.")
+                    return
 
-            msg = ""
-            if not bp_all.empty:
-                var = bp_all.var()
-                std = bp_all.std()
-                msg += f"📌 Початковий тиск:\n - Дисперсія: {var:.2f}\n - Відхилення: {std:.2f}"
-                if bp_all.mean() < 90 or bp_all.mean() > 140:
-                    msg += "\n⚠ Значення виходить за межі норми (90–140 мм рт.ст.)!"
-            if not ap_all.empty:
-                var = ap_all.var()
-                std = ap_all.std()
-                msg += f"\n\n📌 Після лікування:\n - Дисперсія: {var:.2f}\n - Відхилення: {std:.2f}"
-                if ap_all.mean() < 90 or ap_all.mean() > 140:
-                    msg += "\n⚠ Значення виходить за межі норми (90–140 мм рт.ст.)!"
+                top.destroy()
 
-            messagebox.showinfo("Стабільність тиску", msg)
-
-            if messagebox.askyesno("Графік тиску", "Бажаєте переглянути графік тиску?"):
-                plt.figure(figsize=(8, 4))
-                if not bp_all.empty:
-                    plt.plot(
-                        bp_all.index,
-                        bp_all.values,
-                        marker="o",
-                        label="Початковий тиск",
-                        color="red",
+                try:
+                    conn = pyodbc.connect(
+                        rf"DRIVER={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={db_path};"
                     )
-                if not ap_all.empty:
-                    plt.plot(
-                        ap_all.index,
-                        ap_all.values,
-                        marker="o",
-                        label="Після лікування",
-                        color="green",
+                    start_str = start.strftime("#%m/%d/%Y 00:00:00#")
+                    end_str = end.strftime("#%m/%d/%Y 23:59:59#")
+
+                    query = (
+                        f"SELECT pulse, date_when_created FROM pulse "
+                        f"WHERE user_id = {self.patient_id} "
+                        f"AND date_when_created BETWEEN {start_str} AND {end_str} "
+                        f"ORDER BY date_when_created"
                     )
-                plt.title("Зміна тиску")
-                plt.xlabel("Вимірювання")
-                plt.ylabel("Тиск")
-                plt.legend()
-                plt.grid(True)
-                plt.tight_layout()
-                plt.show()
+                    df = pd.read_sql(query, conn)
+                    conn.close()
+
+                    pulses = df["pulse"].dropna()
+                    if pulses.empty:
+                        messagebox.showinfo(
+                            "Немає даних",
+                            "Немає даних про пульс у вибраному діапазоні.",
+                        )
+                        return
+
+                    average = pulses.mean()
+                    messagebox.showinfo(
+                        "Середній пульс", f"Середній пульс: {average:.2f} уд/хв"
+                    )
+
+                    if messagebox.askyesno(
+                        "Графік пульсу", "Бажаєте переглянути графік пульсу?"
+                    ):
+                        plt.figure(figsize=(6, 4))
+                        plt.plot(
+                            pd.to_datetime(df["date_when_created"]),
+                            df["pulse"],
+                            marker="o",
+                            linestyle="-",
+                            color="blue",
+                        )
+                        plt.title("Пульс з часом")
+                        plt.xlabel("Дата")
+                        plt.ylabel("Пульс (уд/хв)")
+                        plt.grid(True)
+                        plt.tight_layout()
+                        plt.xticks(rotation=30)
+                        plt.show()
+
+                except Exception as e:
+                    messagebox.showerror(
+                        "Помилка", f"Не вдалося завантажити пульс:\n{e}"
+                    )
+
+            top = Toplevel()
+            top.title("Виберіть діапазон дат")
+
+            Label(top, text="Дата з:").grid(row=0, column=0, padx=10, pady=10)
+            start_cal = DateEntry(
+                top,
+                width=12,
+                background="darkblue",
+                foreground="white",
+                borderwidth=2,
+                year=min_date.year,
+                month=min_date.month,
+                day=min_date.day,
+            )
+            start_cal.grid(row=0, column=1, padx=10)
+
+            Label(top, text="Дата по:").grid(row=1, column=0, padx=10, pady=10)
+            end_cal = DateEntry(
+                top,
+                width=12,
+                background="darkblue",
+                foreground="white",
+                borderwidth=2,
+                year=max_date.year,
+                month=max_date.month,
+                day=max_date.day,
+            )
+            end_cal.grid(row=1, column=1, padx=10)
+
+            Button(top, text="Показати", command=on_confirm).grid(
+                row=2, column=0, columnspan=2, pady=15
+            )
 
         except Exception as e:
-            messagebox.showerror("Помилка", str(e))
+            messagebox.showerror("Помилка", f"Не вдалося завантажити дані:\n{e}")
 
     def analyze_weight(self):
         try:
@@ -343,98 +358,169 @@ class ExcelGraphApp:
             conn = pyodbc.connect(
                 rf"DRIVER={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={db_path};"
             )
-            df = pd.read_sql(
-                f"SELECT weight, sugar FROM WaS WHERE user_id = {self.patient_id}", conn
+            df_range = pd.read_sql(
+                f"SELECT MIN(date_when_created) AS min_date, MAX(date_when_created) AS max_date "
+                f"FROM WaS WHERE user_id = {self.patient_id}",
+                conn,
             )
             conn.close()
 
-            df.columns = [col.strip().lower() for col in df.columns]
-
-            if "sugar" not in df.columns or "weight" not in df.columns:
-                messagebox.showerror(
-                    "Помилка", "В таблиці немає полів 'weight' або 'sugar'"
+            min_date, max_date = df_range["min_date"][0], df_range["max_date"][0]
+            if not min_date or not max_date:
+                messagebox.showinfo(
+                    "Немає даних", "Немає доступних записів по вазі та цукру."
                 )
                 return
 
-            try:
-                df["parsed_sugar"] = (
-                    df["sugar"]
-                    .astype(str)
-                    .str.replace(",", ".", regex=False)
-                    .astype(float)
-                )
-            except Exception as e:
-                messagebox.showerror(
-                    "Помилка", f"Помилка при обробці значень цукру: {e}"
-                )
-                return
+            def on_confirm():
+                start = start_cal.get_date()
+                end = end_cal.get_date()
+                if start > end:
+                    messagebox.showerror("Помилка", "Дата 'з' має бути до 'по'.")
+                    return
+                top.destroy()
 
-            df = df.dropna(subset=["weight", "parsed_sugar"])
+                try:
+                    conn = pyodbc.connect(
+                        rf"DRIVER={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={db_path};"
+                    )
+                    start_str = start.strftime("#%m/%d/%Y 00:00:00#")
+                    end_str = end.strftime("#%m/%d/%Y 23:59:59#")
 
-            if df.empty:
-                messagebox.showinfo("Недостатньо даних", "Немає коректних значень.")
-                return
+                    query = (
+                        f"SELECT weight, sugar, date_when_created FROM WaS "
+                        f"WHERE user_id = {self.patient_id} "
+                        f"AND date_when_created BETWEEN {start_str} AND {end_str} "
+                        f"ORDER BY date_when_created"
+                    )
+                    df = pd.read_sql(query, conn)
+                    conn.close()
 
-            avg_weight = df["weight"].mean()
-            avg_sugar = df["parsed_sugar"].mean()
+                    df.columns = [col.strip().lower() for col in df.columns]
 
-            correlation = df["weight"].corr(df["parsed_sugar"])
-            correlation_text = f"Коефіцієнт кореляції: {correlation:.2f}\n" + (
-                "Є помірна або сильна кореляція між вагою і рівнем цукру."
-                if abs(correlation) >= 0.3
-                else "Кореляція між вагою і рівнем цукру слабка або відсутня."
+                    if "sugar" not in df.columns or "weight" not in df.columns:
+                        messagebox.showerror(
+                            "Помилка", "Немає полів 'weight' або 'sugar'"
+                        )
+                        return
+
+                    try:
+                        df["parsed_sugar"] = (
+                            df["sugar"]
+                            .astype(str)
+                            .str.replace(",", ".", regex=False)
+                            .astype(float)
+                        )
+                    except Exception as e:
+                        messagebox.showerror(
+                            "Помилка", f"Помилка при обробці цукру: {e}"
+                        )
+                        return
+
+                    df = df.dropna(subset=["weight", "parsed_sugar"])
+                    if df.empty:
+                        messagebox.showinfo(
+                            "Недостатньо даних", "Немає коректних значень."
+                        )
+                        return
+
+                    avg_weight = df["weight"].mean()
+                    avg_sugar = df["parsed_sugar"].mean()
+
+                    correlation = df["weight"].corr(df["parsed_sugar"])
+                    correlation_text = f"Коефіцієнт кореляції: {correlation:.2f}\n" + (
+                        "Є помірна або сильна кореляція між вагою і рівнем цукру."
+                        if abs(correlation) >= 0.3
+                        else "Кореляція між вагою і рівнем цукру слабка або відсутня."
+                    )
+
+                    try:
+                        slope, _ = np.polyfit(range(len(df["weight"])), df["weight"], 1)
+                        if slope > 0.05:
+                            trend_text = "Тренд: вага має тенденцію до збільшення."
+                        elif slope < -0.05:
+                            trend_text = "Тренд: вага має тенденцію до зменшення."
+                        else:
+                            trend_text = (
+                                "Тренд: зміни ваги не мають вираженої тенденції."
+                            )
+                    except Exception as e:
+                        trend_text = f"Помилка при обчисленні тренду ваги: {e}"
+
+                    try:
+                        n = len(df["weight"])
+                        s = df["weight"].std()
+                        z = 1.96
+                        margin_error = z * (s / np.sqrt(n))
+                        ci_low = avg_weight - margin_error
+                        ci_high = avg_weight + margin_error
+                        ci_text = f"З імовірністю 95% вага пацієнта знаходиться в межах {ci_low:.2f} – {ci_high:.2f} кг."
+                    except Exception as e:
+                        ci_text = f"Помилка при обчисленні довірчого інтервалу: {e}"
+
+                    messagebox.showinfo(
+                        "Аналіз даних",
+                        f"Середня вага: {avg_weight:.2f} кг\n"
+                        f"Середній рівень цукру: {avg_sugar:.2f} ммоль/л\n\n"
+                        f"{correlation_text}\n\n{trend_text}\n\n📏 {ci_text}",
+                    )
+
+                    if messagebox.askyesno(
+                        "Графік", "Хочете побачити графік ваги та цукру?"
+                    ):
+                        plt.figure(figsize=(6, 4))
+                        plt.plot(
+                            pd.to_datetime(df["date_when_created"]),
+                            df["weight"],
+                            marker="o",
+                            label="Вага",
+                            color="orange",
+                        )
+                        plt.plot(
+                            pd.to_datetime(df["date_when_created"]),
+                            df["parsed_sugar"],
+                            marker="o",
+                            label="Цукор",
+                            color="blue",
+                        )
+                        plt.title("Динаміка ваги та цукру")
+                        plt.xlabel("Дата")
+                        plt.ylabel("Значення")
+                        plt.legend()
+                        plt.grid(True)
+                        plt.xticks(rotation=30)
+                        plt.tight_layout()
+                        plt.show()
+
+                except Exception as e:
+                    messagebox.showerror("Помилка", f"Помилка під час аналізу: {e}")
+
+            top = Toplevel()
+            top.title("Виберіть діапазон дат")
+
+            Label(top, text="Дата з:").grid(row=0, column=0, padx=10, pady=10)
+            start_cal = DateEntry(
+                top,
+                width=12,
+                year=min_date.year,
+                month=min_date.month,
+                day=min_date.day,
             )
+            start_cal.grid(row=0, column=1)
 
-            try:
-                slope, _ = np.polyfit(df.index, df["weight"], 1)
-                if slope > 0.05:
-                    trend_text = "Тренд: вага має тенденцію до збільшення."
-                elif slope < -0.05:
-                    trend_text = "Тренд: вага має тенденцію до зменшення."
-                else:
-                    trend_text = "Тренд: зміни ваги не мають вираженої тенденції."
-            except Exception as e:
-                trend_text = f"Помилка при обчисленні тренду ваги: {e}"
-
-            try:
-                n = len(df["weight"])
-                s = df["weight"].std()
-                z = 1.96
-                margin_error = z * (s / np.sqrt(n))
-                ci_low = avg_weight - margin_error
-                ci_high = avg_weight + margin_error
-                ci_text = f"З імовірністю 95% вага пацієнта знаходиться в межах {ci_low:.2f} – {ci_high:.2f} кг."
-            except Exception as e:
-                ci_text = f"Помилка при обчисленні довірчого інтервалу: {e}"
-
-            messagebox.showinfo(
-                "Аналіз даних",
-                f"Середня вага: {avg_weight:.2f} кг\n"
-                f"Середній рівень цукру: {avg_sugar:.2f} ммоль/л\n\n"
-                f"{correlation_text}\n\n{trend_text}\n\n📏 {ci_text}",
+            Label(top, text="Дата по:").grid(row=1, column=0, padx=10, pady=10)
+            end_cal = DateEntry(
+                top,
+                width=12,
+                year=max_date.year,
+                month=max_date.month,
+                day=max_date.day,
             )
+            end_cal.grid(row=1, column=1)
 
-            if messagebox.askyesno(
-                "Графік ваги", "Хочете побачити графік ваги та рівня цукру?"
-            ):
-                plt.figure(figsize=(6, 4))
-                plt.plot(
-                    df.index, df["weight"], marker="o", label="Вага", color="orange"
-                )
-                plt.plot(
-                    df.index,
-                    df["parsed_sugar"],
-                    marker="o",
-                    label="Цукор",
-                    color="blue",
-                )
-                plt.title("Динаміка ваги та цукру")
-                plt.xlabel("Вимірювання")
-                plt.ylabel("Значення")
-                plt.legend()
-                plt.grid(True)
-                plt.tight_layout()
-                plt.show()
+            Button(top, text="Показати", command=on_confirm).grid(
+                row=2, column=0, columnspan=2, pady=10
+            )
 
         except Exception as e:
             messagebox.showerror("Помилка", str(e))
@@ -445,53 +531,312 @@ class ExcelGraphApp:
             conn = pyodbc.connect(
                 rf"DRIVER={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={db_path};"
             )
-            df = pd.read_sql(
-                f"SELECT bpressure, apressure FROM Pressure WHERE user_id = {self.patient_id}",
+            df_range = pd.read_sql(
+                f"SELECT MIN(date_when_created) AS min_date, MAX(date_when_created) AS max_date "
+                f"FROM Pressure WHERE user_id = {self.patient_id}",
                 conn,
             )
             conn.close()
 
-            before = df["bpressure"].dropna()
-            after = df["apressure"].dropna()
-
-            if len(before) != len(after) or len(before) < 2:
-                messagebox.showwarning(
-                    "Недостатньо даних", "Потрібно хоча б 2 пари значень тиску."
-                )
+            min_date, max_date = df_range["min_date"][0], df_range["max_date"][0]
+            if not min_date or not max_date:
+                messagebox.showinfo("Немає даних", "Немає записів про тиск.")
                 return
 
-            avg_before = before.mean()
-            avg_after = after.mean()
-            messagebox.showinfo(
-                "Середні значення",
-                f"До лікування: {avg_before:.2f}\nПісля лікування: {avg_after:.2f}",
+            def on_confirm():
+                start = start_cal.get_date()
+                end = end_cal.get_date()
+                if start > end:
+                    messagebox.showerror("Помилка", "Дата 'з' має бути до 'по'.")
+                    return
+                top.destroy()
+
+                try:
+                    conn = pyodbc.connect(
+                        rf"DRIVER={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={db_path};"
+                    )
+                    start_str = start.strftime("#%m/%d/%Y 00:00:00#")
+                    end_str = end.strftime("#%m/%d/%Y 23:59:59#")
+                    query = (
+                        f"SELECT bpressure, apressure, date_when_created FROM Pressure "
+                        f"WHERE user_id = {self.patient_id} "
+                        f"AND date_when_created BETWEEN {start_str} AND {end_str} "
+                        f"ORDER BY date_when_created"
+                    )
+                    df = pd.read_sql(query, conn)
+                    conn.close()
+
+                    before = df["bpressure"].dropna()
+                    after = df["apressure"].dropna()
+
+                    if len(before) != len(after) or len(before) < 2:
+                        messagebox.showwarning(
+                            "Недостатньо даних", "Потрібно хоча б 2 пари значень тиску."
+                        )
+                        return
+
+                    avg_before = before.mean()
+                    avg_after = after.mean()
+                    messagebox.showinfo(
+                        "Середні значення",
+                        f"До лікування: {avg_before:.2f} мм рт.ст.\nПісля лікування: {avg_after:.2f} мм рт.ст.",
+                    )
+
+                    if messagebox.askyesno(
+                        "Графік ефекту", "Показати графік до/після лікування?"
+                    ):
+                        plt.figure(figsize=(6, 4))
+                        plt.plot(
+                            pd.to_datetime(df["date_when_created"][: len(before)]),
+                            before.values,
+                            marker="o",
+                            label="До лікування",
+                            color="purple",
+                        )
+                        plt.plot(
+                            pd.to_datetime(df["date_when_created"][: len(after)]),
+                            after.values,
+                            marker="o",
+                            label="Після лікування",
+                            color="green",
+                        )
+                        plt.title("До та після лікування")
+                        plt.xlabel("Дата")
+                        plt.ylabel("Тиск (мм рт.ст.)")
+                        plt.legend()
+                        plt.grid(True)
+                        plt.xticks(rotation=30)
+                        plt.tight_layout()
+                        plt.show()
+
+                except Exception as e:
+                    messagebox.showerror("Помилка", f"Помилка аналізу: {e}")
+
+            top = Toplevel()
+            top.title("Виберіть діапазон дат")
+
+            Label(top, text="Дата з:").grid(row=0, column=0, padx=10, pady=10)
+            start_cal = DateEntry(
+                top,
+                width=12,
+                year=min_date.year,
+                month=min_date.month,
+                day=min_date.day,
+            )
+            start_cal.grid(row=0, column=1)
+
+            Label(top, text="Дата по:").grid(row=1, column=0, padx=10, pady=10)
+            end_cal = DateEntry(
+                top,
+                width=12,
+                year=max_date.year,
+                month=max_date.month,
+                day=max_date.day,
+            )
+            end_cal.grid(row=1, column=1)
+
+            Button(top, text="Показати", command=on_confirm).grid(
+                row=2, column=0, columnspan=2, pady=10
             )
 
-            if messagebox.askyesno(
-                "Графік ефекту", "Бажаєте переглянути графік до/після лікування?"
-            ):
-                plt.figure(figsize=(6, 4))
-                plt.plot(
-                    before.index,
-                    before.values,
-                    marker="o",
-                    label="До лікування",
-                    color="purple",
-                )
-                plt.plot(
-                    after.index,
-                    after.values,
-                    marker="o",
-                    label="Після лікування",
-                    color="green",
-                )
-                plt.title("До та після лікування")
-                plt.xlabel("Вимірювання")
-                plt.ylabel("Тиск")
-                plt.legend()
-                plt.grid(True)
-                plt.tight_layout()
-                plt.show()
+        except Exception as e:
+            messagebox.showerror("Помилка", str(e))
+
+    def calculate_dispersion(self):
+        try:
+            db_path = os.path.abspath("database/medical_system.accdb")
+            conn = pyodbc.connect(
+                rf"DRIVER={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={db_path};"
+            )
+            df_range = pd.read_sql(
+                f"SELECT MIN(date_when_created) AS min_date, MAX(date_when_created) AS max_date "
+                f"FROM dispersion WHERE user_id = {self.patient_id}",
+                conn,
+            )
+            conn.close()
+
+            min_date, max_date = df_range["min_date"][0], df_range["max_date"][0]
+            if not min_date or not max_date:
+                messagebox.showinfo("Немає даних", "Немає доступних записів пульсу.")
+                return
+
+            def on_confirm():
+                start = start_cal.get_date()
+                end = end_cal.get_date()
+                if start > end:
+                    messagebox.showerror("Помилка", "Дата 'з' має бути до 'по'.")
+                    return
+
+                top.destroy()
+
+                try:
+                    conn = pyodbc.connect(
+                        rf"DRIVER={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={db_path};"
+                    )
+                    start_str = start.strftime("#%m/%d/%Y 00:00:00#")
+                    end_str = end.strftime("#%m/%d/%Y 23:59:59#")
+
+                    query = (
+                        f"SELECT pulse, pressure, oxygen_level, weight, sugar, temperature, date_when_created FROM dispersion "
+                        f"WHERE user_id = {self.patient_id} "
+                        f"AND date_when_created BETWEEN {start_str} AND {end_str} "
+                        f"ORDER BY date_when_created"
+                    )
+                    df = pd.read_sql(query, conn)
+                    conn.close()
+
+                    if df.empty:
+                        messagebox.showinfo(
+                            "Немає даних", "Немає даних за вказаний період."
+                        )
+                        return
+
+                    df["sugar"] = pd.to_numeric(df["sugar"], errors="coerce")
+                    df["temperature"] = pd.to_numeric(
+                        df["temperature"], errors="coerce"
+                    )
+
+                    pulses = df["pulse"].dropna()
+                    pressure = df["pressure"].dropna()
+                    oxygen_level = df["oxygen_level"].dropna()
+                    weight = df["weight"].dropna()
+                    sugar = df["sugar"].dropna()
+                    temperature = df["temperature"].dropna()
+
+                    average_pulse = pulses.mean() if not pulses.empty else 0
+                    average_pressure = pressure.mean() if not pressure.empty else 0
+                    average_oxygen = (
+                        oxygen_level.mean() if not oxygen_level.empty else 0
+                    )
+                    average_weight = weight.mean() if not weight.empty else 0
+                    average_sugar = sugar.mean() if not sugar.empty else 0
+                    average_temperature = (
+                        temperature.mean() if not temperature.empty else 0
+                    )
+
+                    dispersion_pulse = pulses.var() if not pulses.empty else 0
+                    dispersion_pressure = pressure.var() if not pressure.empty else 0
+                    dispersion_oxygen = (
+                        oxygen_level.var() if not oxygen_level.empty else 0
+                    )
+                    dispersion_weight = weight.var() if not weight.empty else 0
+                    dispersion_sugar = sugar.var() if not sugar.empty else 0
+                    dispersion_temperature = (
+                        temperature.var() if not temperature.empty else 0
+                    )
+
+                    message = f"Середні показники та дисперсія за період з {start} по {end}:\n"
+                    message += f"Пульс: {average_pulse:.2f} уд/хв (Дисперсія: {dispersion_pulse:.2f})\n"
+                    message += f"Тиск: {average_pressure:.2f} мм рт. ст. (Дисперсія: {dispersion_pressure:.2f})\n"
+                    message += f"Рівень кисню: {average_oxygen:.2f} % (Дисперсія: {dispersion_oxygen:.2f})\n"
+                    message += f"Вага: {average_weight:.2f} кг (Дисперсія: {dispersion_weight:.2f})\n"
+                    message += f"Цукор: {average_sugar:.2f} ммоль/л (Дисперсія: {dispersion_sugar:.2f})\n"
+                    message += f"Температура: {average_temperature:.2f} °C (Дисперсія: {dispersion_temperature:.2f})\n"
+
+                    messagebox.showinfo("Середні показники і дисперсія", message)
+
+                    if average_pulse > 120:
+                        messagebox.showwarning("Аномалія", "Пульс дуже високий!")
+                    if average_pressure > 140:
+                        messagebox.showwarning("Аномалія", "Тиск занадто високий!")
+                    if average_oxygen < 90:
+                        messagebox.showwarning("Аномалія", "Рівень кисню дуже низький!")
+                    if average_weight > 150:
+                        messagebox.showwarning("Аномалія", "Вага надмірна!")
+                    if average_sugar > 7.8:
+                        messagebox.showwarning(
+                            "Аномалія", "Цукор в крові дуже високий!"
+                        )
+                    if average_temperature > 38:
+                        messagebox.showwarning(
+                            "Аномалія", "Температура тіла дуже висока!"
+                        )
+
+                    if messagebox.askyesno(
+                        "Графік показників", "Хочете побачити графік показників?"
+                    ):
+                        plt.figure(figsize=(10, 6))
+                        plt.plot(
+                            df["date_when_created"],
+                            df["pulse"],
+                            marker="o",
+                            label="Пульс",
+                            color="blue",
+                        )
+                        plt.plot(
+                            df["date_when_created"],
+                            df["pressure"],
+                            marker="o",
+                            label="Тиск",
+                            color="red",
+                        )
+                        plt.plot(
+                            df["date_when_created"],
+                            df["oxygen_level"],
+                            marker="o",
+                            label="Рівень кисню",
+                            color="green",
+                        )
+                        plt.plot(
+                            df["date_when_created"],
+                            df["weight"],
+                            marker="o",
+                            label="Вага",
+                            color="brown",
+                        )
+                        plt.plot(
+                            df["date_when_created"],
+                            df["sugar"],
+                            marker="o",
+                            label="Цукор",
+                            color="purple",
+                        )
+                        plt.plot(
+                            df["date_when_created"],
+                            df["temperature"],
+                            marker="o",
+                            label="Температура",
+                            color="orange",
+                        )
+                        plt.title("Динаміка медичних показників")
+                        plt.xlabel("Дата")
+                        plt.ylabel("Значення")
+                        plt.legend()
+                        plt.grid(True)
+                        plt.tight_layout()
+                        plt.show()
+
+                except Exception as e:
+                    messagebox.showerror(
+                        "Помилка", f"Сталася помилка при обробці даних: {e}"
+                    )
+
+            top = Toplevel()
+            top.title("Виберіть діапазон дат")
+
+            Label(top, text="Дата з:").grid(row=0, column=0, padx=10, pady=10)
+            start_cal = DateEntry(
+                top,
+                width=12,
+                year=min_date.year,
+                month=min_date.month,
+                day=min_date.day,
+            )
+            start_cal.grid(row=0, column=1)
+
+            Label(top, text="Дата по:").grid(row=1, column=0, padx=10, pady=10)
+            end_cal = DateEntry(
+                top,
+                width=12,
+                year=max_date.year,
+                month=max_date.month,
+                day=max_date.day,
+            )
+            end_cal.grid(row=1, column=1)
+
+            Button(top, text="Показати", command=on_confirm).grid(
+                row=2, column=0, columnspan=2, pady=10
+            )
 
         except Exception as e:
             messagebox.showerror("Помилка", str(e))

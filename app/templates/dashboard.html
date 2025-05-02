@@ -175,8 +175,7 @@
     </header>
 
     <div class="windows-wrapper">
-
-        <!-- Вікно інформації -->
+ 
         <div class="mac-window">
             {% with messages = get_flashed_messages() %}
             {% if messages %}
@@ -206,12 +205,11 @@
                 <p><b>Телефон:</b> {{ user["phone"] }}</p>
                 <p><b>Інформація:</b> {{ user["info"] }}</p>
 
-                <a href="{{ url_for('download_info', format='pdf') }}">📥 Завантажити PDF</a>
-                <a href="{{ url_for('download_info', format='docx') }}">📥 Завантажити DOCX</a>
+                <a href="{{ url_for('download_info', format='pdf', patient_id=user['patient_id']) }}">Завантажити PDF</a>
+                <a href="{{ url_for('download_info', format='docx', patient_id=user['patient_id']) }}">Завантажити DOCX</a>
             </div>
         </div>
-
-        <!-- Вікно файлів -->
+ 
         <div class="mac-window">
             <div class="mac-title-bar">
                 <div class="mac-buttons">
@@ -245,8 +243,7 @@
         </div>
 
     </div>
-
-    <!-- Календар -->
+ 
     <div id="calendar"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/uk.js"></script>
