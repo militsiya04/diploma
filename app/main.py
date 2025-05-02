@@ -6,7 +6,7 @@ import random
 import re
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from io import BytesIO
 
 import cv2
@@ -598,16 +598,23 @@ def generate_links():
 @login_required_with_timeout()
 @roles_required("admin", "doctor")
 def add_pulse(patient_id):
-    pulse = request.form["pulse"]
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO pulse (user_id, pulse, date_when_created) VALUES (?, ?, ?)",
-        (patient_id, pulse, datetime.now()),
-    )
-    conn.commit()
-    conn.close()
-    flash("Пульс додано успішно!")
+    try:
+        pulse = request.form["pulse"]
+        selected_date_str = request.form["selected_date"]
+        selected_date = datetime.strptime(selected_date_str, "%Y-%m-%d")
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO pulse (user_id, pulse, date_when_created) VALUES (?, ?, ?)",
+            (patient_id, pulse, selected_date),
+        )
+        conn.commit()
+        conn.close()
+        flash("Пульс додано успішно!")
+    except Exception as e:
+        flash(f"Помилка бази даних: {e}", "error")
+
     return redirect(url_for("patient_dashboard", patient_id=patient_id))
 
 
@@ -615,16 +622,42 @@ def add_pulse(patient_id):
 @login_required_with_timeout()
 @roles_required("admin", "doctor")
 def add_dispersion(patient_id):
-    dispersion = request.form["dispersion"]
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO dispersion (user_id, pulse, date_when_created) VALUES (?, ?, ?)",
-        (patient_id, dispersion, datetime.now()),
-    )
-    conn.commit()
-    conn.close()
-    flash("Дисперсію додано успішно!")
+    try:
+        pulse = request.form["pulse"]
+        pressure = request.form["pressure"]
+        oxygen_level = request.form["oxygen_level"]
+        weight = request.form["weight"]
+        sugar = request.form["sugar"]
+        temperature = request.form["temperature"]
+        selected_date_str = request.form["selected_date"]
+
+        selected_date = datetime.strptime(selected_date_str, "%Y-%m-%d")
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO dispersion (user_id, pulse, pressure, oxygen_level, weight, sugar, temperature, date_when_created)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+            (
+                patient_id,
+                pulse,
+                pressure,
+                oxygen_level,
+                weight,
+                sugar,
+                temperature,
+                selected_date,
+            ),
+        )
+        conn.commit()
+        conn.close()
+
+        flash("Дані успішно збережені!")
+    except Exception as e:
+        flash(f"Помилка бази даних: {e}", "error")
+
     return redirect(url_for("patient_dashboard", patient_id=patient_id))
 
 
@@ -632,17 +665,24 @@ def add_dispersion(patient_id):
 @login_required_with_timeout()
 @roles_required("admin", "doctor")
 def add_was(patient_id):
-    weight = request.form["weight"]
-    sugar = request.form["sugar"]
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO WaS (user_id, weight, sugar, date_when_created) VALUES (?, ?, ?, ?)",
-        (patient_id, weight, sugar, datetime.now()),
-    )
-    conn.commit()
-    conn.close()
-    flash("Дані про вагу та цукор додано успішно!")
+    try:
+        weight = request.form["weight"]
+        sugar = request.form["sugar"]
+        selected_date_str = request.form["selected_date"]
+        selected_date = datetime.strptime(selected_date_str, "%Y-%m-%d")
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO WaS (user_id, weight, sugar, date_when_created) VALUES (?, ?, ?, ?)",
+            (patient_id, weight, sugar, selected_date),
+        )
+        conn.commit()
+        conn.close()
+        flash("Дані про вагу та цукор додано успішно!")
+    except Exception as e:
+        flash(f"Помилка бази даних: {e}", "error")
+
     return redirect(url_for("patient_dashboard", patient_id=patient_id))
 
 
@@ -650,17 +690,24 @@ def add_was(patient_id):
 @login_required_with_timeout()
 @roles_required("admin", "doctor")
 def add_pressure(patient_id):
-    bpressure = request.form["bpressure"]
-    apressure = request.form["apressure"]
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO pressure (user_id, bpressure, apressure, date_when_created) VALUES (?, ?, ?, ?)",
-        (patient_id, bpressure, apressure, datetime.now()),
-    )
-    conn.commit()
-    conn.close()
-    flash("Тиск додано успішно!")
+    try:
+        bpressure = request.form["bpressure"]
+        apressure = request.form["apressure"]
+        selected_date_str = request.form["selected_date"]
+        selected_date = datetime.strptime(selected_date_str, "%Y-%m-%d")
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO pressure (user_id, bpressure, apressure, date_when_created) VALUES (?, ?, ?, ?)",
+            (patient_id, bpressure, apressure, selected_date),
+        )
+        conn.commit()
+        conn.close()
+        flash("Тиск додано успішно!")
+    except Exception as e:
+        flash(f"Помилка бази даних: {e}", "error")
+
     return redirect(url_for("patient_dashboard", patient_id=patient_id))
 
 
@@ -699,6 +746,7 @@ def dashboard():
     return render_template(
         "dashboard.html",
         user={
+            "patient_id": user_id,
             "first_name": first_name,
             "surname": surname,
             "phone": phone,
@@ -825,6 +873,49 @@ def download_info(format, patient_id):
                 "\nРівень цукру виходить за межі норми (3.9–7.8 ммоль/л)!"
             )
 
+    # Дисперсія за останні 30 днів
+    dispersion_text = ""
+    try:
+        conn_disp = get_db_connection()
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=30)
+        query = (
+            f"SELECT pulse, pressure, oxygen_level, weight, sugar, temperature "
+            f"FROM dispersion WHERE user_id = {patient_id} "
+            f"AND date_when_created BETWEEN ? AND ?"
+        )
+        df_disp = pd.read_sql(query, conn_disp, params=[start_date, end_date])
+        conn_disp.close()
+
+        if not df_disp.empty:
+            df_disp["sugar"] = pd.to_numeric(df_disp["sugar"], errors="coerce")
+            df_disp["temperature"] = pd.to_numeric(
+                df_disp["temperature"], errors="coerce"
+            )
+
+            dispersion_text = "Дисперсія за останні 30 днів:\n"
+            for column in [
+                "pulse",
+                "pressure",
+                "oxygen_level",
+                "weight",
+                "sugar",
+                "temperature",
+            ]:
+                values = df_disp[column].dropna()
+                if not values.empty:
+                    dispersion_value = values.var()
+                    dispersion_text += (
+                        f"{column.capitalize()}: {dispersion_value:.2f}\n"
+                    )
+                else:
+                    dispersion_text += f"{column.capitalize()}: Немає даних\n"
+        else:
+            dispersion_text = "Дисперсія за останні 30 днів: Немає даних\n"
+
+    except Exception as e:
+        dispersion_text = f"Помилка при обчисленні дисперсії: {e}"
+
     # --- Формування звіту ---
     if format == "pdf":
         base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -857,6 +948,11 @@ def download_info(format, patient_id):
                 y -= 20
             y -= 10
 
+        for subline in dispersion_text.split("\n"):
+            c.drawString(100, y, subline)
+            y -= 20
+        y -= 10
+
         c.save()
         pdf_file.seek(0)
 
@@ -882,6 +978,7 @@ def download_info(format, patient_id):
         doc.add_paragraph(pressure_text)
         doc.add_paragraph(treatment_effect_text)
         doc.add_paragraph(weight_sugar_text)
+        doc.add_paragraph(dispersion_text)
 
         doc_file = BytesIO()
         doc.save(doc_file)
@@ -1146,8 +1243,6 @@ def get_calendar(patient_id):
         "SELECT id, title, start, end, description FROM calendar_events WHERE patient_id = ?",
         (patient_id,),
     )
-    print("💡 ДОСТУП РАЗРЕШЁН! session['user_id'] =", session.get("user_id"))
-    print(" ДОСТУП РАЗРЕШЁН! session['user_id'] =", session.get("user_id"))
     events = cursor.fetchall()
     conn.close()
 
