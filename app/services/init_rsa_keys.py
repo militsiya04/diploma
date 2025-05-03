@@ -3,17 +3,16 @@ import os
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-# Шляхи до ключів (змінюй при потребі)
 PRIVATE_KEY_PATH = "./rsa_private.pem"
 PUBLIC_KEY_PATH = "./rsa_public.pem"
 
 
 def generate_rsa_keys():
     if os.path.exists(PRIVATE_KEY_PATH) and os.path.exists(PUBLIC_KEY_PATH):
-        print("  Ключі вже існують. Генерація не потрібна.")
+        print("Ключі вже існують. Генерація не потрібна.")
         return
 
-    print("🔐 Генеруємо нову пару RSA-ключів...")
+    print("Генеруємо нову пару RSA-ключів...")
 
     private_key = rsa.generate_private_key(
         public_exponent=65537,
