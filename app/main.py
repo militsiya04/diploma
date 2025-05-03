@@ -986,7 +986,6 @@ def send_message():
         public_key = load_public_key()
         encrypted_message = encrypt_rsa(message, public_key)
 
-        # добавляем текущее время отправки
         sent_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         query = "INSERT INTO messages (sender_id, receiver_id, message, sent_at) VALUES (?, ?, ?, ?)"
@@ -1041,9 +1040,6 @@ def upload_excel(patient_id):
 @login_required_with_timeout()
 @roles_required("admin", "doctor")
 def edit_excel(patient_id, filename):
-    """
-    Открывает страницу редактора и загружает данные из выбранного файла пациента.
-    """
     patient_folder = os.path.join("server_database/excel_files", str(patient_id))
     file_path = os.path.join(patient_folder, filename)
 
