@@ -8,7 +8,7 @@ import subprocess
 import sys
 from datetime import datetime, date, timedelta
 from io import BytesIO
-
+from openpyxl import Workbook
 import cv2
 import numpy as np
 import pandas as pd
@@ -490,11 +490,9 @@ def verify_reset_face():
             os.remove(input_photo_path)
 
             if result["verified"]:
-                # Генерируем токен для сброса пароля
                 reset_token = secrets.token_urlsafe(32)
                 session["reset_token"] = reset_token
 
-                # Редиректим на страницу сброса пароля с токеном в URL
                 return redirect(url_for("reset_password", token=reset_token))
             else:
                 flash("Обличчя не співпадає.", "error")
@@ -513,7 +511,6 @@ def verify_reset_face():
 def reset_password():
     token = request.args.get("token")
 
-    # Проверяем токен
     if not token or session.get("reset_token") != token:
         flash("Доступ заборонено.", "error")
         return redirect(url_for("forgot_password"))
@@ -531,7 +528,6 @@ def reset_password():
         conn.commit()
         conn.close()
 
-        # Очищаем всё после смены пароля
         session.pop("reset_user_id", None)
         session.pop("reset_token", None)
 
@@ -1082,7 +1078,6 @@ def send_message():
         public_key = load_public_key()
         encrypted_message = encrypt_rsa(message, public_key)
 
-        # добавляем текущее время отправки
         sent_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         query = "INSERT INTO messages (sender_id, receiver_id, message, sent_at) VALUES (?, ?, ?, ?)"
@@ -1135,11 +1130,8 @@ def upload_excel(patient_id):
 
 @app.route("/edit_excel/<int:patient_id>/<filename>")
 @login_required_with_timeout()
-@roles_required("admin", "doctor")
+@roles_required("admin", "doctor", "patient")
 def edit_excel(patient_id, filename):
-    """
-    Открывает страницу редактора и загружает данные из выбранного файла пациента.
-    """
     patient_folder = os.path.join("server_database/excel_files", str(patient_id))
     file_path = os.path.join(patient_folder, filename)
 
@@ -1147,33 +1139,60 @@ def edit_excel(patient_id, filename):
         return redirect(url_for("patient_dashboard", patient_id=patient_id))
 
     try:
-        df = pd.read_excel(file_path, engine="openpyxl", header=None)
+        df = pd.read_excel(file_path, engine="openpyxl", index_col=0)
+        headers = df.columns.tolist()
+        row_headers = df.index.tolist()
         data = df.fillna("").values.tolist()
     except Exception as e:
         return redirect(url_for("patient_dashboard", patient_id=patient_id))
 
     return render_template(
-        "edit_excel.html", patient_id=patient_id, filename=filename, table_data=data
+        "edit_excel.html",
+        patient_id=patient_id,
+        filename=filename,
+        headers=headers,
+        row_headers=row_headers,
+        table_data=data,
     )
 
 
-@app.route("/edit_excel/<int:patient_id>/<filename>/save", methods=["POST"])
+@app.route("/save_table/<int:patient_id>/<filename>", methods=["POST"])
 @login_required_with_timeout()
 @roles_required("admin", "doctor")
 def save_excel(patient_id, filename):
-    data = request.get_json().get("table_data")
-    if not data:
-        return jsonify({"message": "Немає даних для збереження"}), 400
+    data = request.get_json()
 
-    try:
-        file_path = os.path.join(
-            "server_database/excel_files", str(patient_id), filename
-        )
-        df = pd.DataFrame(data)
-        df.to_excel(file_path, index=False, header=False, engine="openpyxl")
-        return jsonify({"message": "Таблицю збережено успішно."})
-    except Exception as e:
-        return jsonify({"message": f"Помилка при збереженні: {str(e)}"}), 500
+    if not data or not all(k in data for k in ("headers", "row_headers", "table_data")):
+        return jsonify({"message": "Недостаточно данных"}), 400
+
+    column_headers = data["headers"]
+    row_headers = data["row_headers"]
+    table_values = data["table_data"]
+
+    wb = Workbook()
+    ws = wb.active
+
+    for col_num, header in enumerate(column_headers, start=2):
+        ws.cell(row=1, column=col_num, value=header)
+
+    for row_num, (row_header, row_data) in enumerate(
+        zip(row_headers, table_values), start=2
+    ):
+        ws.cell(row=row_num, column=1, value=row_header)
+        for col_num, value in enumerate(row_data, start=2):
+            ws.cell(row=row_num, column=col_num, value=value)
+
+    folder_path = os.path.join("server_database", "excel_files", str(patient_id))
+    os.makedirs(folder_path, exist_ok=True)
+
+    name, ext = os.path.splitext(filename)
+    if ext.lower() != ".xlsx":
+        filename = f"{name}.xlsx"
+
+    file_path = os.path.join(folder_path, filename)
+    wb.save(file_path)
+
+    return jsonify({"message": "Таблицю збережено успішно"})
 
 
 @app.route("/edit_excel/<int:patient_id>/<filename>/download", methods=["POST"])
@@ -1181,18 +1200,27 @@ def save_excel(patient_id, filename):
 @roles_required("admin", "doctor")
 def download_excel(patient_id, filename):
     data = request.get_json().get("table_data")
-    if not data:
+    if not data or len(data) < 2:
         return "Немає даних для експорту", 400
 
     try:
-        df = pd.DataFrame(data)
+        max_len = max(len(row) for row in data)
+        data = [row + [""] * (max_len - len(row)) for row in data]
+
+        column_headers = data[0][1:]
+        row_headers = [row[0] for row in data[1:]]
+        table_values = [row[1:] for row in data[1:]]
+
+        df = pd.DataFrame(table_values, columns=column_headers, index=row_headers)
+
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            df.to_excel(writer, index=False, header=False)
+            df.to_excel(writer, index=True, index_label="")
+
         output.seek(0)
 
         return send_file(
-            output,
+            io.BytesIO(output.read()),
             as_attachment=True,
             download_name="edited_table.xlsx",
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1201,14 +1229,12 @@ def download_excel(patient_id, filename):
         return f"Помилка при створенні файлу: {str(e)}", 500
 
 
+@app.route("/download_patient_excel/<int:patient_id>/<filename>")
 @login_required_with_timeout()
 @roles_required("admin", "doctor", "patient")
-@app.route("/download_patient_excel/<int:patient_id>/<filename>")
 def download_patient_excel(patient_id, filename):
-    folder_path = os.path.join("server_database", "excel_files", str(patient_id))
-    safe_filename = secure_filename(filename)
-
-    return send_from_directory(folder_path, safe_filename, as_attachment=True)
+    filepath = os.path.join("server_database", "excel_files", str(patient_id), filename)
+    return send_file(filepath, as_attachment=True)
 
 
 @app.route("/patients/<int:patient_id>/create_new_excel", methods=["POST"])
