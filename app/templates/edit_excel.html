@@ -126,20 +126,20 @@
         <thead>
             <tr>
                 <th></th>
-                {% for col in range(table_data[0]|length) %}
-                    <th>
-                        {{ loop.index }}
-                        <button class="delete-column" onclick="removeColumn({{ loop.index - 1 }})">×</button>
-                    </th>
+                {% for header in headers %}
+                <th contenteditable="true" data-header="true">
+                    {{ header }}
+                    <button class="delete-column" onclick="removeColumn({{ loop.index0 }})">×</button>
+                </th>
                 {% endfor %}
             </tr>
         </thead>
         <tbody>
             {% for row in table_data %}
             <tr>
-                <th>
-                    {{ loop.index }}
-                    <button class="delete-row" onclick="removeRow({{ loop.index - 1 }})">×</button>
+                <th contenteditable="true">
+                    {{ row_headers[loop.index0] if row_headers else loop.index }}
+                    <button class="delete-row" onclick="removeRow({{ loop.index0 }})">×</button>
                 </th>
                 {% for cell in row %}
                 <td contenteditable="true" oninput="updateFormulas()">{{ cell }}</td>
@@ -149,7 +149,7 @@
         </tbody>
     </table>
 
-    <div style="text-align: center;">
+    <div style="text-align: center; margin-top: 20px;">
         <button onclick="addRow()">Додати рядок</button>
         <button onclick="addColumn()">Додати стовпець</button>
         <br><br>
@@ -163,12 +163,12 @@
         function addRow() {
             let table = document.getElementById("editableTable").getElementsByTagName('tbody')[0];
             let newRow = table.insertRow();
-            let rowIndex = table.rows.length;
             let th = document.createElement("th");
-            th.innerHTML = rowIndex + ' <button class="delete-row" onclick="removeRow(' + (rowIndex - 1) + ')">×</button>';
+            th.contentEditable = "true";
+            th.innerHTML = 'Нова строка <button class="delete-row" onclick="removeRow(' + (table.rows.length - 1) + ')">×</button>';
             newRow.appendChild(th);
 
-            let columnCount = table.rows[0].cells.length - 1;
+            let columnCount = document.getElementById("editableTable").rows[0].cells.length - 1;
             for (let i = 0; i < columnCount; i++) {
                 let newCell = newRow.insertCell();
                 newCell.contentEditable = "true";
@@ -179,9 +179,10 @@
         function addColumn() {
             let table = document.getElementById("editableTable");
             let headerRow = table.rows[0];
-            let columnIndex = headerRow.cells.length;
             let th = document.createElement("th");
-            th.innerHTML = columnIndex + ' <button class="delete-column" onclick="removeColumn(' + (columnIndex - 1) + ')">×</button>';
+            th.contentEditable = "true";
+            th.setAttribute("data-header", "true");
+            th.innerHTML = 'Новий <button class="delete-column" onclick="removeColumn(' + (headerRow.cells.length - 1) + ')">×</button>';
             headerRow.appendChild(th);
 
             for (let i = 1; i < table.rows.length; i++) {
@@ -191,21 +192,21 @@
             }
         }
 
-        function removeRow(rowIndex) {
-            let table = document.getElementById("editableTable").getElementsByTagName('tbody')[0];
-            if (table.rows.length > 1) {
-                table.deleteRow(rowIndex);
+        function removeRow(index) {
+            let tbody = document.getElementById("editableTable").getElementsByTagName('tbody')[0];
+            if (tbody.rows.length > 1) {
+                tbody.deleteRow(index);
             } else {
                 alert("Неможливо видалити останній рядок!");
             }
         }
 
-        function removeColumn(colIndex) {
+        function removeColumn(index) {
             let table = document.getElementById("editableTable");
-            let headerRow = table.rows[0];
-            if (headerRow.cells.length > 2) {
+            let columnCount = table.rows[0].cells.length;
+            if (columnCount > 2) {
                 for (let i = 0; i < table.rows.length; i++) {
-                    table.rows[i].deleteCell(colIndex + 1);
+                    table.rows[i].deleteCell(index + 1);
                 }
             } else {
                 alert("Неможливо видалити останній стовпець!");
@@ -256,76 +257,110 @@
         }
 
         function saveTable() {
-            const table = document.getElementById("editableTable");
-            const data = [];
-
-            for (let i = 1; i < table.rows.length; i++) {
-                let row = [];
-                for (let j = 1; j < table.rows[i].cells.length; j++) {
-                    row.push(table.rows[i].cells[j].innerText.trim());
-                }
-                data.push(row);
-            }
-
-            const button = document.querySelector('button[onclick="saveTable()"]');
-            const patientId = button.getAttribute("data-patient-id");
-            const filename = button.getAttribute("data-filename");
-
-            fetch(`/edit_excel/${patientId}/${filename}/save`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ table_data: data })
-            }).then(res => {
-                if (res.ok) {
-                    alert("Таблицю збережено!");
-                } else {
-                    alert("Помилка при збереженні таблиці.");
-                }
-            });
+    const table = document.getElementById("editableTable");
+    const data = {
+        headers: [],
+        row_headers: [],
+        table_data: []
+    };
+ 
+    for (let j = 1; j < table.rows[0].cells.length; j++) {
+        let headerText = table.rows[0].cells[j].innerText.trim();
+        headerText = headerText.replace(/×/g, '').trim(); 
+        if (headerText) {
+            data.headers.push(headerText);
+        }
+    }
+ 
+    for (let i = 1; i < table.rows.length; i++) {
+        let row = table.rows[i];
+        let rowData = [];
+ 
+        let rowHeaderText = row.cells[0].innerText.trim();
+        rowHeaderText = rowHeaderText.replace(/×/g, '').trim();
+        data.row_headers.push(rowHeaderText);
+ 
+        for (let j = 1; j < row.cells.length; j++) {
+            rowData.push(row.cells[j].innerText.trim());
         }
 
-        function downloadTable() {
-            const table = document.getElementById("editableTable");
-            const data = [];
+        data.table_data.push(rowData);
+    }
+ 
+    const saveButton = document.querySelector('button[onclick="saveTable()"]');
+    const patientId = saveButton.getAttribute('data-patient-id');
+    const filename = saveButton.getAttribute('data-filename');
+ 
+    fetch(`/save_table/${patientId}/${filename}`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        if (!response.ok) throw new Error("Помилка збереження таблиці");
+        return response.json();
+    })
+    .then(response => {
+        alert("Таблицю збережено успішно");
+    })
+    .catch(error => {
+        alert("Сталася помилка при збереженні: " + error.message);
+    });
+}
 
-            for (let i = 1; i < table.rows.length; i++) {
-                let row = [];
-                for (let j = 1; j < table.rows[i].cells.length; j++) {
-                    row.push(table.rows[i].cells[j].innerText.trim());
-                }
-                data.push(row);
-            }
 
-            const button = document.querySelector('button[onclick="downloadTable()"]');
-            const patientId = button.getAttribute("data-patient-id");
-            const filename = button.getAttribute("data-filename");
+function downloadTable() {
+    const table = document.getElementById("editableTable");
+    const data = [];
+ 
+    let headerRow = [""];
+    for (let j = 1; j < table.rows[0].cells.length; j++) {
+        let cleanHeader = table.rows[0].cells[j].innerText.trim().replace(/×/g, '').trim();
+        headerRow.push(cleanHeader);
+    }
+    data.push(headerRow);
+ 
+    for (let i = 1; i < table.rows.length; i++) {
+        let row = [];
+ 
+        let rowHeader = table.rows[i].cells[0].innerText.trim().replace(/×/g, '').trim();
+        row.push(rowHeader);
 
-            fetch(`/edit_excel/${patientId}/${filename}/download`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ table_data: data })
-            })
-            .then(response => {
-                if (!response.ok) throw new Error("Помилка при завантаженні файлу.");
-                return response.blob();
-            })
-            .then(blob => {
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "edited_table.xlsx";
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                window.URL.revokeObjectURL(url);
-            })
-            .catch(error => {
-                alert("Помилка: " + error.message);
-            });
+        for (let j = 1; j < table.rows[i].cells.length; j++) {
+            row.push(table.rows[i].cells[j].innerText.trim());
         }
+
+        data.push(row);
+    }
+
+    const button = document.querySelector("button[onclick='downloadTable()']");
+    const patientId = button.getAttribute("data-patient-id");
+    const filename = button.getAttribute("data-filename");
+
+    fetch(`/edit_excel/${patientId}/${filename}/download`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ table_data: data })
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "edited_table.xlsx";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    })
+    .catch(error => {
+        alert("Помилка: " + error.message);
+    });
+}
     </script>
 </body>
+</html>

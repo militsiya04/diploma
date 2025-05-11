@@ -93,9 +93,14 @@ def create_tables(conn):
     cursor.execute(
         """
         CREATE TABLE dispersion (
-            id COUNTER PRIMARY KEY,
+            id AUTOINCREMENT PRIMARY KEY,
             user_id INTEGER NOT NULL,
             pulse INTEGER,
+            pressure INTEGER, 
+            oxygen_level INTEGER,
+            temperature TEXT(100),
+            weight INTEGER,
+            sugar TEXT(100),
             date_when_created DATETIME
         )
     """
