@@ -205,8 +205,8 @@
                 <p><b>Телефон:</b> {{ user["phone"] }}</p>
                 <p><b>Інформація:</b> {{ user["info"] }}</p>
 
-                <a href="{{ url_for('download_info', format='pdf', patient_id=user['patient_id']) }}">Завантажити PDF</a>
-                <a href="{{ url_for('download_info', format='docx', patient_id=user['patient_id']) }}">Завантажити DOCX</a>
+                <a href="{{ url_for('download_info', patient_id=session['user_id'], format='pdf') }}">Завантажити PDF</a>
+                <a href="{{ url_for('download_info', patient_id=session['user_id'], format='docx') }}">Завантажити DOCX</a>
             </div>
         </div>
  

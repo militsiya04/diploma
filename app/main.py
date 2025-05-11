@@ -4,6 +4,7 @@ import io
 import os
 import random
 import re
+import secrets
 import subprocess
 import sys
 from datetime import datetime, date, timedelta
@@ -107,11 +108,11 @@ def register_user(token: str):
     token_data = cursor.fetchone()
 
     if not token_data:
-        return "⛔ Посилання недійсне або не існує.", 403
+        return "Посилання недійсне або не існує.", 403
     if token_data[2]:
-        return "⛔ Це посилання вже використано.", 403
+        return "Це посилання вже використано.", 403
     if datetime.now() > token_data[1]:
-        return "⛔ Посилання протерміноване.", 403
+        return "Посилання протерміноване.", 403
 
     role = token_data[3]
 
@@ -120,7 +121,7 @@ def register_user(token: str):
         if cursor.fetchone():
             conn.close()
             return (
-                "⚠️ Адміністратор уже існує в системі. Повторна реєстрація неможлива.",
+                "Адміністратор уже існує в системі. Повторна реєстрація неможлива.",
                 403,
             )
 
@@ -150,7 +151,7 @@ def register_user(token: str):
         if cursor.fetchone():
             conn.close()
             flash(
-                "❗ Користувач з таким логіном, email або телефоном уже існує!", "error"
+                "Користувач з таким логіном, email або телефоном уже існує!", "error"
             )
             return redirect(request.url)
 
@@ -1269,6 +1270,7 @@ def get_calendar(patient_id):
         "SELECT id, title, start, end, description FROM calendar_events WHERE patient_id = ?",
         (patient_id,),
     )
+    print("ДОСТУП ДОЗВОЛЕНО! session['user_id'] =", session.get("user_id"))
     events = cursor.fetchall()
     conn.close()
 
@@ -1467,7 +1469,7 @@ def run_tkinter(patient_id):
     subprocess.Popen(
         [sys.executable, "graph.py", str(patient_id)], start_new_session=True
     )
-    return "График!", 200
+    return "Запуск блоку статистичної обробки!", 200
 
 
 if __name__ == "__main__":
