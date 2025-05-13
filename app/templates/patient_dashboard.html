@@ -247,24 +247,24 @@
          
                 <form action="{{ url_for('add_pulse', patient_id=patient_id) }}" method="POST" style="background: #f8fcfc; padding: 20px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); width: 100%; max-width: 400px;">
                     <label for="date_pulse" style="font-weight: bold; color: #004B4B; display: block; margin-bottom: 5px;">Дата:</label>
-                    <input type="date" name="selected_date" id="date_pulse" required style="width: 100%; padding: 10px; border: 1px solid #a3dcdc; border-radius: 8px; margin-bottom: 10px; background: #f0fafa;">
+                    <input type="date" name="selected_date" id="date_pulse" min="1" required style="width: 100%; padding: 10px; border: 1px solid #a3dcdc; border-radius: 8px; margin-bottom: 10px; background: #f0fafa;">
                     <label for="pulse" style="font-weight: bold; color: #004B4B; display: block; margin-bottom: 5px;">Пульс:</label>
-                    <input type="number" name="pulse" required style="width: 100%; padding: 10px; border: 1px solid #a3dcdc; border-radius: 8px; margin-bottom: 10px; background: #f0fafa;">
+                    <input type="number" name="pulse" min="1" required style="width: 100%; padding: 10px; border: 1px solid #a3dcdc; border-radius: 8px; margin-bottom: 10px; background: #f0fafa;">
                     <button type="submit" style="background-color: #0097a7; color: white; padding: 12px 24px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; transition: background-color 0.3s ease; width: 100%;">Додати пульс</button>
                 </form> 
                 <form action="{{ url_for('add_dispersion', patient_id=patient_id) }}" method="POST" style="background: #f8fcfc; padding: 20px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); width: 100%; max-width: 400px;">
                     <label for="date_dispersion" style="font-weight: bold; color: #004B4B; display: block; margin-bottom: 5px;">Дата:</label>
-                    <input type="date" name="selected_date" id="date_dispersion" required style="width: 100%; padding: 10px; border: 1px solid #a3dcdc; border-radius: 8px; margin-bottom: 10px; background: #f0fafa;">
+                    <input type="date" name="selected_date" min="1" id="date_dispersion" required style="width: 100%; padding: 10px; border: 1px solid #a3dcdc; border-radius: 8px; margin-bottom: 10px; background: #f0fafa;">
                     <label for="pulse" style="font-weight: bold; color: #004B4B; display: block; margin-bottom: 5px;">Пульс:</label>
-                    <input type="number" step="any" name="pulse" >
+                    <input type="number" min="1" step="any" name="pulse" >
                     <label for="pressure" >Тиск:</label>
-                    <input type="number" step="any" name="pressure" >
+                    <input type="number"  min="1" step="any" name="pressure" >
                     <label for="oxygen_level" >Рівень кисню:</label>
-                    <input type="number" step="any" name="oxygen_level" >
+                    <input type="number" min="1" step="any" name="oxygen_level" >
                     <label for="weight"  >Вага:</label>
-                    <input type="number" step="any" name="weight" >
+                    <input type="number" min="1" step="any" name="weight" >
                     <label for="sugar" >Цукор (ммоль/л):</label>
-                    <input type="number" name="sugar" step="0.1" min="0" >
+                    <input type="number" min="1" name="sugar" step="0.1" min="0" >
                     <label for="temperature" >Температура (°C):</label>
                     <input type="number" name="temperature" step="0.1" min="30" max="45" >
                     <button type="submit" >Зберегти показники</button>
@@ -280,11 +280,11 @@
                            style="width: 100%; padding: 10px; border: 1px solid #a3dcdc; border-radius: 8px; margin-bottom: 10px; background: #f0fafa;">
                     
                     <label for="weight" style="font-weight: bold; color: #004B4B;">Вага:</label>
-                    <input type="number" name="weight" required
+                    <input type="number" min="1" name="weight" required
                            style="width: 100%; padding: 10px; border: 1px solid #a3dcdc; border-radius: 8px; margin-bottom: 10px; background: #f0fafa;">
                     
                     <label for="sugar" style="font-weight: bold; color: #004B4B;">Цукор:</label>
-                    <input type="number" name="sugar" step="any" required
+                    <input type="number" min="1" name="sugar" step="any" required
                            style="width: 100%; padding: 10px; border: 1px solid #a3dcdc; border-radius: 8px; margin-bottom: 10px; background: #f0fafa;">
                     
                     <button type="submit"
@@ -300,11 +300,11 @@
                            style="width: 100%; padding: 10px; border: 1px solid #a3dcdc; border-radius: 8px; margin-bottom: 10px; background: #f0fafa;">
                     
                     <label for="bpressure" style="font-weight: bold; color: #004B4B;">Систолічний тиск:</label>
-                    <input type="number" name="bpressure" required
+                    <input type="number" min="1" name="bpressure" required
                            style="width: 100%; padding: 10px; border: 1px solid #a3dcdc; border-radius: 8px; margin-bottom: 10px; background: #f0fafa;">
                     
                     <label for="apressure" style="font-weight: bold; color: #004B4B;">Діастолічний тиск:</label>
-                    <input type="number" name="apressure" required
+                    <input type="number" min="1" name="apressure" required
                            style="width: 100%; padding: 10px; border: 1px solid #a3dcdc; border-radius: 8px; margin-bottom: 10px; background: #f0fafa;">
                     
                     <button type="submit"
