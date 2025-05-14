@@ -58,6 +58,8 @@ from services.crypto import (
     encrypt_rsa,
     load_private_key,
     load_public_key,
+    encrypt_rsa_hybrid,
+    decrypt_rsa_hybrid
 )
 from services.init_rsa_keys import generate_rsa_keys
 
@@ -735,7 +737,7 @@ def dashboard():
     first_name = decrypt_rsa(user[0], private_key)
     surname = decrypt_rsa(user[1], private_key)
     phone = decrypt_rsa(user[2], private_key)
-    info = decrypt_rsa(user[3], private_key) if user[3] else "N/A"
+    info = decrypt_rsa_hybrid(user[3], private_key) if user[3] else "N/A"
 
     patient_folder = os.path.join("server_database/excel_files/", str(user_id))
     files = os.listdir(patient_folder) if os.path.exists(patient_folder) else []
@@ -775,7 +777,7 @@ def download_info(format, patient_id):
     email = decrypt_rsa(user[2], private_key)
     phone = decrypt_rsa(user[3], private_key)
     position = user[4]
-    info = decrypt_rsa(user[5], private_key) if user[5] else "N/A"
+    info = decrypt_rsa_hybrid(user[5], private_key) if user[5] else "N/A"
     conn.close()
 
     # --- Медичні дані ---
@@ -912,8 +914,7 @@ def download_info(format, patient_id):
 
     except Exception as e:
         dispersion_text = f"Помилка при обчисленні дисперсії: {e}"
-
-    # --- Формування звіту ---
+ 
     if format == "pdf":
         base_dir = os.path.dirname(os.path.abspath(__file__))
         font_path = os.path.join(base_dir, "static", "fonts", "free-sans.ttf")
@@ -922,18 +923,28 @@ def download_info(format, patient_id):
         pdf_file = BytesIO()
         c = canvas.Canvas(pdf_file, pagesize=letter)
         c.setFont("FreeSans", 12)
-
-        # Текст
+ 
         c.drawString(100, 750, "Інформація про користувача:")
         c.drawString(100, 730, f"Ім'я: {first_name}")
         c.drawString(100, 710, f"Прізвище: {surname}")
         c.drawString(100, 690, f"Email: {email}")
         c.drawString(100, 670, f"Телефон: {phone}")
         c.drawString(100, 650, f"Посада: {position}")
-        c.drawString(100, 630, f"Інформація: {info}")
+ 
+        y = 630
+        c.drawString(100, y, "Інформація:")
+        y -= 20
 
-        # Медичні дані
-        y = 600
+        for paragraph in info.strip().split("\n"):
+            paragraph = paragraph.strip()
+            if paragraph:
+                c.drawString(120, y, paragraph)
+                y -= 20
+            else:
+                y -= 10  
+
+        y -= 10 
+ 
         for line in (
             pulse_text,
             pressure_text,
@@ -1397,7 +1408,7 @@ def patient_dashboard(patient_id):
             "first_name": decrypt_rsa(patient[0], private_key),
             "surname": decrypt_rsa(patient[1], private_key),
             "phone": decrypt_rsa(patient[2], private_key),
-            "info": decrypt_rsa(patient[3], private_key) if patient[3] else None,
+            "info": decrypt_rsa_hybrid(patient[3], private_key) if patient[3] else None,
             "photo": patient[4],
         }
 
@@ -1420,12 +1431,12 @@ def patient_dashboard(patient_id):
 @login_required_with_timeout()
 @roles_required("admin", "doctor")
 def upload_document(patient_id):
-    file = request.files["file"]
+    file = request.files.get("file")
     if file and patient_id:
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
         file.save(filepath)
-
+ 
         if filename.endswith(".pdf"):
             text = extract_text_from_pdf(filepath)
         elif filename.endswith(".docx"):
@@ -1434,9 +1445,10 @@ def upload_document(patient_id):
             flash("Непідтримуваний формат файлу.", "error")
             return redirect(url_for("patient_dashboard", patient_id=patient_id))
 
+        conn = None
         try:
             public_key = load_public_key()
-            encrypted_text = encrypt_rsa(text, public_key)
+            encrypted_text = encrypt_rsa_hybrid(text, public_key)
 
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -1445,12 +1457,13 @@ def upload_document(patient_id):
                 (encrypted_text, patient_id),
             )
             conn.commit()
+            flash("Документ завантажено та інформацію успішно оновлено.", "success")
         except Exception as e:
-            flash(f"Помилка бази даних: {str(e)}", "error")
+            flash(f"Помилка бази даних або шифрування: {str(e)}", "error")
         finally:
-            conn.close()
+            if conn:
+                conn.close()
 
-        flash("Документ завантажено та інформацію успішно оновлено.", "success")
         return redirect(url_for("patient_dashboard", patient_id=patient_id))
 
     flash("Файл не вибрано або ID пацієнта відсутній.", "error")

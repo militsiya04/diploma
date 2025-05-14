@@ -203,7 +203,10 @@
                 {% endif %}
 
                 <p><b>Телефон:</b> {{ user["phone"] }}</p>
-                <p><b>Інформація:</b> {{ user["info"] }}</p>
+                <h4>Інформація:</h4> 
+        <div class="patient-info" style="white-space: pre-line;">
+    {{ user["info"] }}
+</div> 
 
                 <a href="{{ url_for('download_info', patient_id=session['user_id'], format='pdf') }}">Завантажити PDF</a>
                 <a href="{{ url_for('download_info', patient_id=session['user_id'], format='docx') }}">Завантажити DOCX</a>
