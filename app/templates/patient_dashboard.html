@@ -207,22 +207,25 @@
         {% endif %}
 
         <p><b>Телефон:</b> {{ patient["phone"] }}</p>
-        <p><b>Інформація:</b> {{ patient["info"] }}</p>
+        <h4>Інформація:</h4> 
+        <div class="patient-info" style="white-space: pre-line;">
+    {{ patient.info }}
+</div>
 
         <form action="{{ url_for('upload_document', patient_id=patient_id) }}" method="POST" enctype="multipart/form-data">
-            <label for="file">Завантажити документ:</label>
+            <label for="file">Импорт:</label>
             <input type="file" name="file" id="file" accept=".pdf,.doc,.docx">
             <button type="submit">Завантажити</button>
         </form>
 
         <form action="{{ url_for('upload_excel', patient_id=patient_id) }}" method="POST" enctype="multipart/form-data">
-            <label for="file">Завантажити Excel:</label>
+            <label for="file">Импорт Excel:</label>
             <input type="file" name="file" id="file" accept=".xlsx">
             <button type="submit">Завантажити</button>
         </form>
 
-        <a href="{{ url_for('download_info', format='pdf', patient_id=patient_id ) }}">Завантажити PDF</a>
-        <a href="{{ url_for('download_info', format='docx', patient_id=patient_id) }}">Завантажити DOCX</a>
+        <a href="{{ url_for('download_info', format='pdf', patient_id=patient_id ) }}">Звіт PDF</a>
+        <a href="{{ url_for('download_info', format='docx', patient_id=patient_id) }}">Звіт DOCX</a>
         <button onclick="createNewTable()">Створити нову таблицю</button>
 
         <h3>Файли пацієнта</h3>
